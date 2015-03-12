@@ -1,0 +1,2 @@
+hubstorage
+-e git+https://github.com/scrapinghub/crawl-frontier#egg=crawl-frontier

@@ -117,6 +117,7 @@ class HCFBaseBackend(Backend):
     in mycrawler/frontier_settings.py::
 
     BACKEND = 'hcf_backend.HCFFIFOBackend'
+    MAX_NEXT_REQUESTS = 100
 
     Spider settings:
     ----------------

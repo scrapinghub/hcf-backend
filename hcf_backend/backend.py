@@ -23,6 +23,7 @@ DEFAULT_HCF_PRODUCER_BATCH_SIZE = 100
 DEFAULT_HCF_PRODUCER_RESET_FRONTIER = False
 DEFAULT_HCF_CONSUMER_SLOT = 0
 DEFAULT_HCF_CONSUMER_MAX_BATCHES = 0
+DEFAULT_HCF_CONSUMER_MAX_REQUESTS = 0
 
 
 def _msg(msg, level=None):
@@ -135,7 +136,9 @@ class HCFBaseBackend(Backend):
     If is consumer:
     * HCF_CONSUMER_FRONTIER - The frontier where URLs are readed.
     * HCF_CONSUMER_SLOT - Slot from where the spider will read new URLs.
-    * HCF_CONSUMER_MAX_BATCHES - Max batches to read from hubstorage
+    * HCF_CONSUMER_MAX_BATCHES - Max batches to read from hubstorage.
+    * HCF_CONSUMER_MAX_REQUESTS - Max request to be read from hubstorage.
+    (note: crawler stops to read from hcf when any of max batches or max requests limit are reached)
 
     Spider attributes:
     ------------------
@@ -162,6 +165,7 @@ class HCFBaseBackend(Backend):
         'hcf_producer_reset_frontier',
         'hcf_consumer_slot',
         'hcf_consumer_max_batches',
+        'hcf_consumer_max_requests',
     )
 
     def __init__(self, manager):
@@ -187,9 +191,12 @@ class HCFBaseBackend(Backend):
                                                               default=DEFAULT_HCF_CONSUMER_SLOT)
         self.hcf_consumer_max_batches = params.get_from_all_settings('HCF_CONSUMER_MAX_BATCHES',
                                                                      default=DEFAULT_HCF_CONSUMER_MAX_BATCHES)
+        self.hcf_consumer_max_requests = params.get_from_all_settings('HCF_CONSUMER_MAX_REQUESTS',
+                                                                    default=DEFAULT_HCF_CONSUMER_MAX_REQUESTS)
 
         self.stats = self._get_stats()
         self.n_consumed_batches = 0
+        self.n_consumed_requests = 0
         self.producer_get_slot_callback = self._get_producer_slot
 
         self._init_roles()
@@ -232,7 +239,9 @@ class HCFBaseBackend(Backend):
                 self._process_response_link(response, link)
 
     def get_next_requests(self, max_next_requests):
-        if self.consumer and not self._consumer_max_batches_reached():
+        if self.hcf_consumer_max_requests > 0:
+            max_next_requests = min(max_next_requests, self.hcf_consumer_max_requests - self.n_consumed_requests)
+        if self.consumer and not (self._consumer_max_batches_reached() or self._consumer_max_requests_reached()):
             n_queued_requests = len(self.heap)
             n_remaining_requests = max_next_requests - n_queued_requests
             if n_remaining_requests > 0:
@@ -246,7 +255,8 @@ class HCFBaseBackend(Backend):
                 attrval = getattr(scrapy_spider, attr)
                 if attr in ('hcf_producer_number_of_slots',
                             'hcf_producer_batch_size',
-                            'hcf_consumer_max_batches'):
+                            'hcf_consumer_max_batches',
+                            'hcf_consumer_max_requests'):
                     attrval = int(attrval)
                 setattr(self, attr, attrval)
 
@@ -254,7 +264,8 @@ class HCFBaseBackend(Backend):
         return_requests = []
         data = True
 
-        while data and len(return_requests) < n_min_requests and not self._consumer_max_batches_reached():
+        while data and len(return_requests) < n_min_requests and \
+                    not (self._consumer_max_batches_reached() or self._consumer_max_requests_reached()):
             consumed_batches_ids = []
             data = False
             for batch in self.consumer.read(self.hcf_consumer_slot, n_min_requests):
@@ -270,6 +281,7 @@ class HCFBaseBackend(Backend):
                             'depth': 0,
                         })
                         return_requests.append(request)
+                        self.n_consumed_requests += 1
                 consumed_batches_ids.append(batch_id)
                 self.stats.inc_value(self._get_consumer_stats_msg('batches'))
                 _msg('Reading %d request(s) from batch %s ' % (len(requests), batch_id))
@@ -333,6 +345,11 @@ class HCFBaseBackend(Backend):
         if not self.hcf_consumer_max_batches:
             return False
         return self.n_consumed_batches >= self.hcf_consumer_max_batches
+
+    def _consumer_max_requests_reached(self):
+        if not self.hcf_consumer_max_requests:
+            return False
+        return self.n_consumed_requests >= self.hcf_consumer_max_requests
 
     def _init_roles(self):
         self.producer = None

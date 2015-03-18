@@ -386,7 +386,8 @@ class HCFBaseBackend(Backend):
         n_slots = request.meta.get('hcf_producer_number_of_slots', self.hcf_producer_number_of_slots)
 
         fingerprint = request.meta['fingerprint']
-        slot = self.hcf_producer_slot_prefix + str(int(fingerprint, 16) % n_slots)
+        slotno = str(int(fingerprint, 16) % n_slots)
+        slot = self._get_producer_slot_name(slotno)
         return slot
 
     def _get_consumer_stats_msg(self, msg=None):
@@ -403,8 +404,8 @@ class HCFBaseBackend(Backend):
             stats_msg += '/%s' % msg
         return stats_msg
 
-    def _get_producer_slot_name(self, slot):
-        return self.hcf_producer_slot_prefix + str(slot)
+    def _get_producer_slot_name(self, slotno):
+        return self.hcf_producer_slot_prefix + str(slotno)
 
     def _reset_producer_frontier(self):
         _msg('reseting producer slots...')

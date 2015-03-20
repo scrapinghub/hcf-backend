@@ -212,8 +212,6 @@ class HCFBaseBackend(Backend):
             self.producer_get_slot_callback = getattr(scrapy_spider, 'get_producer_slot',
                                                       self.producer_get_slot_callback)
             self.make_request = getattr(scrapy_spider, 'cf_make_request', self._make_request)
-        if not (self.consumer or self.producer):
-            raise NotConfigured("You must configure backend either as consumer or producer")
 
         self._log_start_message()
 

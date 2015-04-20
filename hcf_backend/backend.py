@@ -70,7 +70,14 @@ class HCFManager(object):
             except requests.exceptions.ReadTimeout:
                 _msg("Could not read from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
                                                                       self._hcf_retries), log.ERROR)
-                time.sleep(60)
+            except requests.exceptions.ConnectionError:
+                _msg("Connection error while reading from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
+                                                                      self._hcf_retries), log.ERROR)
+            except requests.exceptions.RequestException:
+                _msg("Error while reading from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
+                                                                      self._hcf_retries), log.ERROR)
+            finally:
+                time.sleep(60 * (i + 1))
                 continue
         return []
 
@@ -82,7 +89,14 @@ class HCFManager(object):
             except requests.exceptions.ReadTimeout:
                 _msg("Could not delete ids from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
                                                                             self._hcf_retries), log.ERROR)
-                time.sleep(60)
+            except requests.exceptions.ConnectionError:
+                _msg("Connection error while deleting ids from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
+                                                                            self._hcf_retries), log.ERROR)
+            except requests.exceptions.RequestException:
+                _msg("Error deleting ids from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
+                                                                            self._hcf_retries), log.ERROR)
+            finally:
+                time.sleep(60 * (i + 1))
                 continue
 
     def delete_slot(self, slot):

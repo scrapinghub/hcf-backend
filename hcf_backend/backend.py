@@ -76,9 +76,7 @@ class HCFManager(object):
             except requests.exceptions.RequestException:
                 _msg("Error while reading from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
                                                                       self._hcf_retries), log.ERROR)
-            finally:
-                time.sleep(60 * (i + 1))
-                continue
+            time.sleep(60 * (i + 1))
         return []
 
     def delete(self, slot, ids):
@@ -95,9 +93,7 @@ class HCFManager(object):
             except requests.exceptions.RequestException:
                 _msg("Error deleting ids from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
                                                                             self._hcf_retries), log.ERROR)
-            finally:
-                time.sleep(60 * (i + 1))
-                continue
+            time.sleep(60 * (i + 1))
 
     def delete_slot(self, slot):
         self._hcf.delete_slot(self._frontier, slot)

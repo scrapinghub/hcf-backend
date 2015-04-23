@@ -1,6 +1,6 @@
 import os
 
-from crawlfrontier.exceptions import NotConfigured
+from frontera.exceptions import NotConfigured
 
 
 class ScrapyStatsCollectorWrapper(object):

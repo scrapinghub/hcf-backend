@@ -5,8 +5,8 @@ import time
 
 from hubstorage import HubstorageClient
 
-from crawlfrontier.contrib.backends.memory import Backend, MemoryFIFOBackend, MemoryLIFOBackend
-from crawlfrontier.exceptions import NotConfigured
+from frontera.contrib.backends.memory import Backend, MemoryFIFOBackend, MemoryLIFOBackend
+from frontera.exceptions import NotConfigured
 
 from .utils import ParameterManager, ScrapyStatsCollectorWrapper, get_scrapy_stats
 
@@ -117,13 +117,13 @@ class HCFManager(object):
 
 class HCFBaseBackend(Backend):
     """
-    In order to enable, follow instructions on how to enable crawl frontier scheduler on crawlfrontier doc, and set path
+    In order to enable, follow instructions on how to enable crawl frontier scheduler on frontera doc, and set path
     to either flavor of the backend (HCFFIFOBackend or HCFLIFOBackend) to the frontier setting BACKEND. Simple example::
 
     in mycrawler/settings.py::
 
-    SCHEDULER = 'crawlfrontier.contrib.scrapy.schedulers.frontier.CrawlFrontierScheduler'
-    FRONTIER_SETTINGS = 'mycrawler.frontier_settings'
+    SCHEDULER = 'frontera.contrib.scrapy.schedulers.frontier.FronteraScheduler'
+    FRONTERA_SETTINGS = 'mycrawler.frontera_settings'
 
     in mycrawler/frontier_settings.py::
 

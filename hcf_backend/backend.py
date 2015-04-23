@@ -247,7 +247,7 @@ class HCFBaseBackend(Backend):
             else:
                 self._process_response_link(response, link)
 
-    def get_next_requests(self, max_next_requests):
+    def get_next_requests(self, max_next_requests, **kwargs):
         if self.hcf_consumer_max_requests > 0:
             max_next_requests = min(max_next_requests, self.hcf_consumer_max_requests - self.n_consumed_requests)
         if self.consumer and not (self._consumer_max_batches_reached() or self._consumer_max_requests_reached()):

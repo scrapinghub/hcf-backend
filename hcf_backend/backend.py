@@ -277,7 +277,7 @@ class HCFBaseBackend(Backend):
     def _get_or_create_request(self, request):
         if self._is_hcf(request):
             assert self.producer, 'HCF request received but backend is not defined as producer'
-            self._process_hcf_response_link(response, link)
+            self._process_hcf_link(request)
             return None, False # already processed
         return super(HCFBaseBackend, self)._get_or_create_request(request)
         
@@ -362,7 +362,7 @@ class HCFBaseBackend(Backend):
         _msg('HCF producer: %s' % producer_message)
         _msg('HCF consumer: %s' % consumer_message)
 
-    def _process_hcf_response_link(self, response, link):
+    def _process_hcf_link(self, link):
         if link.method != 'GET':
             _msg("HCF does not support non GET requests (%s)" % link.url, log.ERROR)
             return

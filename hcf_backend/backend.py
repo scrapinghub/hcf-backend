@@ -244,19 +244,15 @@ class HCFBaseBackend(Backend):
         self.n_consumed_requests = 0
         self.producer_get_slot_callback = self._get_producer_slot
 
-        self._init_roles()
-
     def frontier_start(self, **kwargs):
         super(HCFBaseBackend, self).frontier_start(**kwargs)
         scrapy_spider = kwargs.get('spider', None)
         if scrapy_spider:
             self._copy_spider_settings(scrapy_spider)
-            # roles might have changed.
-            self._init_roles()
             self.producer_get_slot_callback = getattr(scrapy_spider, 'get_producer_slot',
                                                       self.producer_get_slot_callback)
             self.make_request = getattr(scrapy_spider, 'cf_make_request', self._make_request)
-
+        self._init_roles()
         self._log_start_message()
 
         if self.producer and self.hcf_producer_reset_frontier:

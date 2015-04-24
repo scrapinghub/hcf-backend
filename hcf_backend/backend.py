@@ -7,12 +7,6 @@ Optimizing frontier setting configuration:
 BACKEND = 'hcf_backend.HCFFIFOBackend'
 # BACKEND = 'hcf_backend.HCFLIFOBackend'
 
-# on consumer spiders add positive DELAY_ON_EMPTY
-# this helps to optimize reading of batches from HCF
-# however it MUST be 0 (the default value) in case spider
-# is not a consumer and instead is seeded by a start request
-# DELAY_ON_EMPTY = 30
-
 # If you want to limit each consumer job, use one of the
 # following parameters. One limits by read requests count,
 # the other by read batches count. In HCF each batch contains

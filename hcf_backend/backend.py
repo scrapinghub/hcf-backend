@@ -243,6 +243,7 @@ class HCFBaseBackend(Backend):
         self.n_consumed_batches = 0
         self.n_consumed_requests = 0
         self.producer_get_slot_callback = self._get_producer_slot
+        self.delay_on_empty = 0
 
     def frontier_start(self, **kwargs):
         super(HCFBaseBackend, self).frontier_start(**kwargs)
@@ -403,6 +404,7 @@ class HCFBaseBackend(Backend):
                                        project_id=self.hs_project_id,
                                        frontier=self.hcf_consumer_frontier)
             self.stats.set_value(self._get_consumer_stats_msg(), 0)
+            self.delay_on_empty = 30
 
     def _get_producer_slot(self, request):
         """Determine to which slot should be saved the request.

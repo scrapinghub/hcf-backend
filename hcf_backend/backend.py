@@ -1,3 +1,37 @@
+"""
+HCF Backend for Frontera Scheduler
+
+Optimizing frontier setting configuration:
+
+# choose either LIFO or FIFO flavour, depending on your needs
+BACKEND = 'hcf_backend.HCFFIFOBackend'
+# BACKEND = 'hcf_backend.HCFLIFOBackend'
+
+# on consumer spiders add positive DELAY_ON_EMPTY
+# this helps to optimize reading of batches from HCF
+# however it MUST be 0 (the default value) in case spider
+# is not a consumer and instead is seeded by a start request
+# DELAY_ON_EMPTY = 30
+
+# If you want to limit each consumer job, use one of the
+# following parameters. One limits by read requests count,
+# the other by read batches count. In HCF each batch contains
+# no more than 100 requests.
+# HCF_CONSUMER_MAX_REQUESTS = 15000
+# HCF_CONSUMER_MAX_BATCHES = 150
+
+# How many requests are read on each call to HCF. If 0, limit
+# is determined by the speed at which scrapy demands requests, which
+# is very unnefficient because it makes lots of calls to HCF which retrieves
+# a small number of requests. Same if you give it a small value. A too big value
+# will make to retrieve a total of requests/batches bigger than setted
+# in HCF_CONSUMER_MAX_* settings. Can also make to fail requests to HCF
+# by timeout. A value of 1000 is optimal for most purposes.
+MAX_NEXT_REQUESTS = 1000
+
+Read class docstring below for details on other configuration settings.
+"""
+
 from collections import defaultdict
 import datetime
 import requests

@@ -274,14 +274,13 @@ class HCFBaseBackend(Backend):
         if self.consumer:
             self.consumer.close()
 
-    def page_crawled(self, response, links):
-        for link in links:
-            if self._is_hcf(link):
-                assert self.producer, 'HCF request received but backend is not defined as producer'
-                self._process_hcf_response_link(response, link)
-            else:
-                self._process_response_link(response, link)
-
+    def _get_or_create_request(self, request):
+        if self._is_hcf(request):
+            assert self.producer, 'HCF request received but backend is not defined as producer'
+            self._process_hcf_response_link(response, link)
+            return None, False # already processed
+        return super(HCFBaseBackend, self)._get_or_create_request(request)
+        
     def get_next_requests(self, max_next_requests, **kwargs):
         if self.hcf_consumer_max_requests > 0:
             max_next_requests = min(max_next_requests, self.hcf_consumer_max_requests - self.n_consumed_requests)

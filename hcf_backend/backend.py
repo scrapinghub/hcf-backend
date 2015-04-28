@@ -33,7 +33,7 @@ import time
 
 from hubstorage import HubstorageClient
 
-from frontera.contrib.backends.memory import Backend, MemoryFIFOBackend, MemoryLIFOBackend
+from frontera.contrib.backends.memory import MemoryBaseBackend, MemoryFIFOBackend, MemoryLIFOBackend
 from frontera.exceptions import NotConfigured
 
 from .utils import ParameterManager, ScrapyStatsCollectorWrapper, get_scrapy_stats
@@ -48,7 +48,6 @@ __all__ = ['HCFFIFOBackend', 'HCFLIFOBackend']
 DEFAULT_HCF_PRODUCER_NUMBER_OF_SLOTS = 8
 DEFAULT_HCF_PRODUCER_SLOT_PREFIX = ''
 DEFAULT_HCF_PRODUCER_BATCH_SIZE = 10000
-DEFAULT_HCF_PRODUCER_RESET_FRONTIER = False
 DEFAULT_HCF_CONSUMER_SLOT = 0
 DEFAULT_HCF_CONSUMER_MAX_BATCHES = 0
 DEFAULT_HCF_CONSUMER_MAX_REQUESTS = 0
@@ -143,7 +142,7 @@ class HCFManager(object):
             return self._links_to_flush_count[slot]
 
 
-class HCFBaseBackend(Backend):
+class HCFBaseBackend(MemoryBaseBackend):
     """
     In order to enable, follow instructions on how to enable crawl frontier scheduler on frontera doc, and set path
     to either flavor of the backend (HCFFIFOBackend or HCFLIFOBackend) to the frontier setting BACKEND. Simple example::
@@ -170,7 +169,6 @@ class HCFBaseBackend(Backend):
     * HCF_PRODUCER_SLOT_PREFIX - Prefix to use for slot names.
     * HCF_PRODUCER_NUMBER_OF_SLOTS - Number of write slots to use.
     * HCF_PRODUCER_BATCH_SIZE - How often slot flush should be called. When a slot reaches the number, it is flushed.
-    * HCF_PRODUCER_RESET_FRONTIER - Deletes frontier slots if True. defaults to False.
 
     If is consumer:
     * HCF_CONSUMER_FRONTIER - The frontier where URLs are readed.
@@ -201,7 +199,6 @@ class HCFBaseBackend(Backend):
         'hcf_producer_number_of_slots',
         'hcf_producer_slot_prefix',
         'hcf_producer_batch_size',
-        'hcf_producer_reset_frontier',
         'hcf_consumer_slot',
         'hcf_consumer_max_batches',
         'hcf_consumer_max_requests',
@@ -223,8 +220,6 @@ class HCFBaseBackend(Backend):
                                                                          default=DEFAULT_HCF_PRODUCER_NUMBER_OF_SLOTS)
         self.hcf_producer_batch_size = params.get_from_all_settings('HCF_PRODUCER_BATCH_SIZE',
                                                                     default=DEFAULT_HCF_PRODUCER_BATCH_SIZE)
-        self.hcf_producer_reset_frontier = params.get_from_all_settings('HCF_PRODUCER_RESET_FRONTIER',
-                                                                        default=DEFAULT_HCF_PRODUCER_RESET_FRONTIER)
         self.hcf_consumer_frontier = params.get_from_all_settings('HCF_CONSUMER_FRONTIER')
         self.hcf_consumer_slot = params.get_from_all_settings('HCF_CONSUMER_SLOT',
                                                               default=DEFAULT_HCF_CONSUMER_SLOT)
@@ -249,9 +244,6 @@ class HCFBaseBackend(Backend):
             self.make_request = getattr(scrapy_spider, 'cf_make_request', self._make_request)
         self._init_roles()
         self._log_start_message()
-
-        if self.producer and self.hcf_producer_reset_frontier:
-            self._reset_producer_frontier()
 
     def frontier_stop(self, **kwargs):
         super(HCFBaseBackend, self).frontier_stop(**kwargs)
@@ -439,13 +431,6 @@ class HCFBaseBackend(Backend):
 
     def _get_producer_slot_name(self, slotno):
         return self.hcf_producer_slot_prefix + str(slotno)
-
-    def _reset_producer_frontier(self):
-        _msg('reseting producer slots...')
-        for slot in range(self.hcf_producer_number_of_slots):
-            slot_name = self._get_producer_slot_name(slot)
-            _msg('deleting producer slot %s' % slot_name)
-            self.producer.delete_slot(slot_name)
 
 
 class HCFFIFOBackend(HCFBaseBackend, MemoryFIFOBackend):

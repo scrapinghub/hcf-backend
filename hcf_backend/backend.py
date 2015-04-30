@@ -36,7 +36,7 @@ from hubstorage import HubstorageClient
 from frontera.contrib.backends.memory import MemoryBaseBackend, MemoryFIFOBackend, MemoryLIFOBackend
 from frontera.exceptions import NotConfigured
 
-from .utils import ParameterManager, ScrapyStatsCollectorWrapper, get_scrapy_stats
+from .utils import ScrapyStatsCollectorWrapper, get_scrapy_stats
 
 try:
     from scrapy import log

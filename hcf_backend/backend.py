@@ -3,9 +3,7 @@ HCF Backend for Frontera Scheduler
 
 Optimizing frontier setting configuration:
 
-# choose either LIFO or FIFO flavour, depending on your needs
-BACKEND = 'hcf_backend.HCFFIFOBackend'
-# BACKEND = 'hcf_backend.HCFLIFOBackend'
+BACKEND = 'hcf_backend.HCFBackend'
 
 # If you want to limit each consumer job, use one of the
 # following parameters. One limits by read requests count,
@@ -28,22 +26,20 @@ Read class docstring below for details on other configuration settings.
 
 from collections import defaultdict
 import datetime
-import requests
+import requests as requests_lib
 import time
 
 from hubstorage import HubstorageClient
 
-from frontera.contrib.backends.memory import MemoryBaseBackend, MemoryFIFOBackend, MemoryLIFOBackend
-from frontera.exceptions import NotConfigured
-
-from .utils import ScrapyStatsCollectorWrapper, get_scrapy_stats
+from frontera.contrib.backends.memory import MemoryLIFOBackend
+from frontera import Backend
 
 try:
     from scrapy import log
 except ImportError:
     log = None
 
-__all__ = ['HCFFIFOBackend', 'HCFLIFOBackend']
+__all__ = ['HCFBackend']
 
 DEFAULT_HCF_PRODUCER_NUMBER_OF_SLOTS = 8
 DEFAULT_HCF_PRODUCER_SLOT_PREFIX = ''
@@ -94,13 +90,13 @@ class HCFManager(object):
         for i in range(self._hcf_retries):
             try:
                 return self._hcf.read(self._frontier, slot, mincount)
-            except requests.exceptions.ReadTimeout:
+            except requests_lib.exceptions.ReadTimeout:
                 _msg("Could not read from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
                                                                       self._hcf_retries), log.ERROR)
-            except requests.exceptions.ConnectionError:
+            except requests_lib.exceptions.ConnectionError:
                 _msg("Connection error while reading from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
                                                                       self._hcf_retries), log.ERROR)
-            except requests.exceptions.RequestException:
+            except requests_lib.exceptions.RequestException:
                 _msg("Error while reading from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
                                                                       self._hcf_retries), log.ERROR)
             time.sleep(60 * (i + 1))
@@ -111,13 +107,13 @@ class HCFManager(object):
             try:
                 self._hcf.delete(self._frontier, slot, ids)
                 break
-            except requests.exceptions.ReadTimeout:
+            except requests_lib.exceptions.ReadTimeout:
                 _msg("Could not delete ids from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
                                                                             self._hcf_retries), log.ERROR)
-            except requests.exceptions.ConnectionError:
+            except requests_lib.exceptions.ConnectionError:
                 _msg("Connection error while deleting ids from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
                                                                             self._hcf_retries), log.ERROR)
-            except requests.exceptions.RequestException:
+            except requests_lib.exceptions.RequestException:
                 _msg("Error deleting ids from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
                                                                             self._hcf_retries), log.ERROR)
             time.sleep(60 * (i + 1))
@@ -142,10 +138,10 @@ class HCFManager(object):
             return self._links_to_flush_count[slot]
 
 
-class HCFBaseBackend(MemoryBaseBackend):
+class HCFBackend(Backend):
     """
-    In order to enable, follow instructions on how to enable crawl frontier scheduler on frontera doc, and set path
-    to either flavor of the backend (HCFFIFOBackend or HCFLIFOBackend) to the frontier setting BACKEND. Simple example::
+    In order to enable, follow instructions on how to enable crawl frontier scheduler on frontera doc, and set
+    frontier BACKEND setting to hcf_backend.HCFBackend. Simple example::
 
     in mycrawler/settings.py::
 
@@ -154,7 +150,7 @@ class HCFBaseBackend(MemoryBaseBackend):
 
     in mycrawler/frontier_settings.py::
 
-    BACKEND = 'hcf_backend.HCFLIFOBackend'
+    BACKEND = 'hcf_backend.HCFBackend'
     HCF_CONSUMER_MAX_BATCHES = 500
     MAX_NEXT_REQUESTS = 1000
 
@@ -163,6 +159,7 @@ class HCFBaseBackend(MemoryBaseBackend):
 
     * HCF_AUTH - Hubstorage auth (not required if job run in scrapinghub or configured in scrapy.cfg)
     * HCF_PROJECT_ID - Hubstorage project id (not required if job run in scrapinghub or configured scrapy.cfg)
+    * HCF_ALT_BACKEND - Alternate backend to use when don't want to store request in HCF
 
     If is producer:
     * HCF_PRODUCER_FRONTIER - The frontier where URLs are written.
@@ -201,8 +198,13 @@ class HCFBaseBackend(MemoryBaseBackend):
         'HCF_MAKE_REQUEST',
     )
 
+    component_name = 'HCF Backend'
+
+    @classmethod
+    def from_manager(cls, manager):
+        return cls(manager)
+
     def __init__(self, manager):
-        super(HCFBaseBackend, self).__init__(manager)
         self.manager = manager
 
         self.hcf_auth = None
@@ -220,27 +222,27 @@ class HCFBaseBackend(MemoryBaseBackend):
         self.hcf_consumer_max_requests = DEFAULT_HCF_CONSUMER_MAX_REQUESTS
         self.hcf_make_request = self._make_request
 
-        self.stats = self._get_stats()
+        self.stats = self.manager.settings.get('STATS_MANAGER')
+
         self.n_consumed_batches = 0
         self.n_consumed_requests = 0
-        self.delay_on_empty = 0
 
         self.producer = None
         self.consumer = None
 
+        self.alt_backend = MemoryLIFOBackend(manager)
+
     def frontier_start(self):
-        super(HCFBaseBackend, self).frontier_start()
+        self.alt_backend.frontier_start()
         for attr in self.backend_settings:
             value = self.manager.settings.get(attr)
-            print 'HAHA', attr, value
             if value is not None:
                 setattr(self, attr.lower(), value)
         self._init_roles()
         self._log_start_message()
 
-    def frontier_stop(self, **kwargs):
-        super(HCFBaseBackend, self).frontier_stop(**kwargs)
-
+    def frontier_stop(self):
+        self.alt_backend.frontier_stop()
         if self.producer:
             n_flushed_links = self.producer.flush()
             if n_flushed_links:
@@ -250,23 +252,31 @@ class HCFBaseBackend(MemoryBaseBackend):
         if self.consumer:
             self.consumer.close()
 
-    def _get_or_create_request(self, request):
-        if self._is_hcf(request):
-            assert self.producer, 'HCF request received but backend is not defined as producer'
-            self._process_hcf_link(request)
-            return None, False # already processed
-        return super(HCFBaseBackend, self)._get_or_create_request(request)
-        
+    def add_seeds(self, seeds):
+        self.alt_backend.add_seeds(seeds)
+
+    def _page_crawled(self, requests):
+        for request in requests:
+            if self._is_hcf(request):
+                assert self.producer, 'HCF request received but backend is not defined as producer'
+                self._process_hcf_link(request)
+            else:
+                yield request # send to alternate backend
+
+    def page_crawled(self, response, requests):
+        direct_requests = self._page_crawled(requests)
+        self.alt_backend.page_crawled(response, direct_requests)
+
     def get_next_requests(self, max_next_requests, **kwargs):
         if self.hcf_consumer_max_requests > 0:
             max_next_requests = min(max_next_requests, self.hcf_consumer_max_requests - self.n_consumed_requests)
         if self.consumer and not (self._consumer_max_batches_reached() or self._consumer_max_requests_reached()):
-            n_queued_requests = len(self.heap)
+            n_queued_requests = len(self.alt_backend.heap)
             n_remaining_requests = max_next_requests - n_queued_requests
             if n_remaining_requests > 0:
                 for request in self._get_requests_from_hs(n_remaining_requests):
-                    self.heap.push(request)
-        return super(HCFBaseBackend, self).get_next_requests(max_next_requests)
+                    self.alt_backend.heap.push(request)
+        return self.alt_backend.get_next_requests(max_next_requests)
 
     def _get_requests_from_hs(self, n_min_requests):
         return_requests = []
@@ -305,10 +315,6 @@ class HCFBaseBackend(MemoryBaseBackend):
         url = qdata.get('url', fingerprint)
         return self.manager.make_request(url)
 
-    def _get_stats(self):
-        scrapy_stats = get_scrapy_stats(self.manager.extra)
-        return ScrapyStatsCollectorWrapper(scrapy_stats)
-
     def _log_start_message(self):
         producer_message = 'NO'
         consumer_message = 'NO'
@@ -345,7 +351,8 @@ class HCFBaseBackend(MemoryBaseBackend):
         self.stats.inc_value(self._get_producer_stats_msg(slot))
         self.stats.inc_value(self._get_producer_stats_msg())
 
-    def _is_hcf(self, request_or_response):
+    @staticmethod
+    def _is_hcf(request_or_response):
         return request_or_response.meta.get('cf_store', False)
 
     def _consumer_max_batches_reached(self):
@@ -359,7 +366,7 @@ class HCFBaseBackend(MemoryBaseBackend):
         return self.n_consumed_requests >= self.hcf_consumer_max_requests
 
     def _init_roles(self):
-        
+
         if self.hcf_producer_frontier:
             self.producer = HCFManager(auth=self.hcf_auth,
                                        project_id=self.hcf_project_id,
@@ -372,7 +379,7 @@ class HCFBaseBackend(MemoryBaseBackend):
                                        project_id=self.hcf_project_id,
                                        frontier=self.hcf_consumer_frontier)
             self.stats.set_value(self._get_consumer_stats_msg(), 0)
-            self.delay_on_empty = 30
+            self.manager.settings.set('DELAY_ON_EMPTY', 30.0)
 
     def _producer_get_slot_callback(self, request):
         """Determine to which slot should be saved the request.
@@ -414,10 +421,5 @@ class HCFBaseBackend(MemoryBaseBackend):
     def _get_producer_slot_name(self, slotno):
         return self.hcf_producer_slot_prefix + str(slotno)
 
-
-class HCFFIFOBackend(HCFBaseBackend, MemoryFIFOBackend):
-    component_name = 'HCF FIFO Memory Backend'
-
-
-class HCFLIFOBackend(HCFBaseBackend, MemoryLIFOBackend):
-    component_name = 'HCF LIFO Memory Backend'
+    def request_error(self, request, error):
+        pass

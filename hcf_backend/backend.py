@@ -263,8 +263,8 @@ class HCFBackend(Backend):
             else:
                 yield request # send to alternate backend
 
-    def page_crawled(self, response, requests):
-        direct_requests = self._page_crawled(requests)
+    def page_crawled(self, response, links):
+        direct_requests = self._page_crawled(links)
         self.alt_backend.page_crawled(response, direct_requests)
 
     def get_next_requests(self, max_next_requests, **kwargs):

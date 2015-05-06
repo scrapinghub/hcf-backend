@@ -31,8 +31,8 @@ import time
 
 from hubstorage import HubstorageClient
 
-from frontera.contrib.backends.memory import MemoryLIFOBackend
 from frontera import Backend
+from frontera.utils.misc import load_object
 
 try:
     from scrapy import log
@@ -47,6 +47,7 @@ DEFAULT_HCF_PRODUCER_BATCH_SIZE = 10000
 DEFAULT_HCF_CONSUMER_SLOT = 0
 DEFAULT_HCF_CONSUMER_MAX_BATCHES = 0
 DEFAULT_HCF_CONSUMER_MAX_REQUESTS = 0
+DEFAULT_HCF_MEMORY_BACKEND = 'frontera.contrib.backends.memory.MemoryFIFOBackend'
 
 
 def _msg(msg, level=None):
@@ -159,7 +160,7 @@ class HCFBackend(Backend):
 
     * HCF_AUTH - Hubstorage auth (not required if job run in scrapinghub or configured in scrapy.cfg)
     * HCF_PROJECT_ID - Hubstorage project id (not required if job run in scrapinghub or configured scrapy.cfg)
-    * HCF_ALT_BACKEND - Alternate backend to use when don't want to store request in HCF
+    * HCF_MEMORY_BACKEND - Memory backend to use when don't want to store request in HCF
 
     If is producer:
     * HCF_PRODUCER_FRONTIER - The frontier where URLs are written.
@@ -230,10 +231,11 @@ class HCFBackend(Backend):
         self.producer = None
         self.consumer = None
 
-        self.alt_backend = MemoryLIFOBackend(manager)
+        mbackend_cls = self.manager.settings.get('HCF_MEMORY_BACKEND', DEFAULT_HCF_MEMORY_BACKEND)
+        self.memory_backend = load_object(mbackend_cls)(manager)
 
     def frontier_start(self):
-        self.alt_backend.frontier_start()
+        self.memory_backend.frontier_start()
         for attr in self.backend_settings:
             value = self.manager.settings.get(attr)
             if value is not None:
@@ -242,7 +244,7 @@ class HCFBackend(Backend):
         self._log_start_message()
 
     def frontier_stop(self):
-        self.alt_backend.frontier_stop()
+        self.memory_backend.frontier_stop()
         if self.producer:
             n_flushed_links = self.producer.flush()
             if n_flushed_links:
@@ -253,7 +255,7 @@ class HCFBackend(Backend):
             self.consumer.close()
 
     def add_seeds(self, seeds):
-        self.alt_backend.add_seeds(seeds)
+        self.memory_backend.add_seeds(seeds)
 
     def _page_crawled(self, requests):
         for request in requests:
@@ -265,18 +267,18 @@ class HCFBackend(Backend):
 
     def page_crawled(self, response, links):
         direct_requests = self._page_crawled(links)
-        self.alt_backend.page_crawled(response, direct_requests)
+        self.memory_backend.page_crawled(response, direct_requests)
 
     def get_next_requests(self, max_next_requests, **kwargs):
         if self.hcf_consumer_max_requests > 0:
             max_next_requests = min(max_next_requests, self.hcf_consumer_max_requests - self.n_consumed_requests)
         if self.consumer and not (self._consumer_max_batches_reached() or self._consumer_max_requests_reached()):
-            n_queued_requests = len(self.alt_backend.heap)
+            n_queued_requests = len(self.memory_backend.heap)
             n_remaining_requests = max_next_requests - n_queued_requests
             if n_remaining_requests > 0:
                 for request in self._get_requests_from_hs(n_remaining_requests):
-                    self.alt_backend.heap.push(request)
-        return self.alt_backend.get_next_requests(max_next_requests)
+                    self.memory_backend.heap.push(request)
+        return self.memory_backend.get_next_requests(max_next_requests)
 
     def _get_requests_from_hs(self, n_min_requests):
         return_requests = []

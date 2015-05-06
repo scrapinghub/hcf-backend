@@ -48,6 +48,7 @@ DEFAULT_HCF_CONSUMER_SLOT = 0
 DEFAULT_HCF_CONSUMER_MAX_BATCHES = 0
 DEFAULT_HCF_CONSUMER_MAX_REQUESTS = 0
 DEFAULT_HCF_MEMORY_BACKEND = 'frontera.contrib.backends.memory.MemoryFIFOBackend'
+DEFAULT_HCF_MEMORY_BACKEND_MAX_QUEUE = 10000
 
 
 def _msg(msg, level=None):
@@ -161,6 +162,7 @@ class HCFBackend(Backend):
     * HCF_AUTH - Hubstorage auth (not required if job run in scrapinghub or configured in scrapy.cfg)
     * HCF_PROJECT_ID - Hubstorage project id (not required if job run in scrapinghub or configured scrapy.cfg)
     * HCF_MEMORY_BACKEND - Memory backend to use when don't want to store request in HCF
+    * HCF_MEMORY_BACKEND_MAX_QUEUE - Max memory queue size (above this, will be saved to disk)
 
     If is producer:
     * HCF_PRODUCER_FRONTIER - The frontier where URLs are written.
@@ -233,6 +235,9 @@ class HCFBackend(Backend):
 
         mbackend_cls = self.manager.settings.get('HCF_MEMORY_BACKEND', DEFAULT_HCF_MEMORY_BACKEND)
         self.memory_backend = load_object(mbackend_cls)(manager)
+        self.max_memory_queue = self.manager.settings.get('HCF_MEMORY_BACKEND_MAX_QUEUE', DEFAULT_HCF_MEMORY_BACKEND_MAX_QUEUE)
+
+        self.disk_queue = None
 
     def frontier_start(self):
         self.memory_backend.frontier_start()
@@ -241,7 +246,12 @@ class HCFBackend(Backend):
             if value is not None:
                 setattr(self, attr.lower(), value)
         self._init_roles()
+        self.configure_dqueue(self.manager.settings.get('HCF_DISK_QUEUE'))
         self._log_start_message()
+
+    def configure_dqueue(self, dqclass):
+        if dqclass is not None:
+            pass
 
     def frontier_stop(self):
         self.memory_backend.frontier_stop()
@@ -263,11 +273,18 @@ class HCFBackend(Backend):
                 assert self.producer, 'HCF request received but backend is not defined as producer'
                 self._process_hcf_link(request)
             else:
-                yield request # send to alternate backend
+                yield request # send to memory backend/disk
 
     def page_crawled(self, response, links):
-        direct_requests = self._page_crawled(links)
-        self.memory_backend.page_crawled(response, direct_requests)
+        direct_requests = list(self._page_crawled(links))
+        to_mem = len(direct_requests)
+        if self.disk_queue is not None:
+            to_mem = self.max_memory_queue - len(self.memory_backend.heap)
+        if to_mem > 0:
+            memory_requests, direct_requests = direct_requests[:to_mem], direct_requests[to_mem:]
+            self.memory_backend.page_crawled(response, memory_requests)
+        for request in direct_requests:
+            self.disk_queue.push(request)
 
     def get_next_requests(self, max_next_requests, **kwargs):
         if self.hcf_consumer_max_requests > 0:
@@ -278,7 +295,12 @@ class HCFBackend(Backend):
             if n_remaining_requests > 0:
                 for request in self._get_requests_from_hs(n_remaining_requests):
                     self.memory_backend.heap.push(request)
-        return self.memory_backend.get_next_requests(max_next_requests)
+        requests_from_mem = self.memory_backend.get_next_requests(max_next_requests)
+        requests_from_disk = []
+        requests_count = len(requests_from_mem)
+        while self.disk_queue and requests_count < max_next_requests:
+            requests_from_disk.append(self.disk_queue.pop())
+        return requests_from_mem + requests_from_disk
 
     def _get_requests_from_hs(self, n_min_requests):
         return_requests = []

@@ -34,6 +34,8 @@ from hubstorage import HubstorageClient
 from frontera import Backend
 from frontera.utils.misc import load_object
 
+from .diskqueue import DiskQueue
+
 try:
     from scrapy import log
 except ImportError:
@@ -249,9 +251,9 @@ class HCFBackend(Backend):
         self.configure_dqueue(self.manager.settings.get('HCF_DISK_QUEUE'))
         self._log_start_message()
 
-    def configure_dqueue(self, dqclass):
-        if dqclass is not None:
-            pass
+    def configure_dqueue(self, dqclasspath):
+        if dqclasspath is not None:
+            self.disk_queue = DiskQueue(dqclasspath, self.manager.request_model)
 
     def frontier_stop(self):
         self.memory_backend.frontier_stop()

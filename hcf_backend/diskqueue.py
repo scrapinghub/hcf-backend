@@ -48,8 +48,9 @@ class DiskQueue(object):
         return rdict
 
     def request_from_dict(self, rdict):
-        fid = rdict['meta'].pop('scrapy_callback_id')
-        rdict['meta']['scrapy_callback'] = self.get_function_from_id(fid)
+        if 'scrapy_callback_id' in rdict['meta']:
+            fid = rdict['meta'].pop('scrapy_callback_id')
+            rdict['meta']['scrapy_callback'] = self.get_function_from_id(fid)
         return self.request_model(**rdict)
 
     def __len__(self):

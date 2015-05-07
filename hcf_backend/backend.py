@@ -302,6 +302,7 @@ class HCFBackend(Backend):
         requests_count = len(requests_from_mem)
         while self.disk_queue and requests_count < max_next_requests:
             requests_from_disk.append(self.disk_queue.pop())
+            requests_count += 1
         return requests_from_mem + requests_from_disk
 
     def _get_requests_from_hs(self, n_min_requests):

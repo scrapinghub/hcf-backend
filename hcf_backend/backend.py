@@ -256,6 +256,9 @@ class HCFBackend(Backend):
             self.disk_queue = DiskQueue(dqclasspath, self.manager.request_model)
 
     def frontier_stop(self):
+        if self.disk_queue is not None:
+            self.disk_queue.close()
+
         self.memory_backend.frontier_stop()
         if self.producer:
             n_flushed_links = self.producer.flush()

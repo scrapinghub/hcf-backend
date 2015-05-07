@@ -55,3 +55,6 @@ class DiskQueue(object):
 
     def __len__(self):
         return len(self.dq)
+
+    def close(self):
+        self.dq.close()

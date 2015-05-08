@@ -32,9 +32,9 @@ import time
 from hubstorage import HubstorageClient
 
 from frontera import Backend
-from frontera.utils.misc import load_object
 
 from .diskqueue import DiskQueue
+from .memqueue import MemQueue
 
 try:
     from scrapy import log
@@ -49,9 +49,7 @@ DEFAULT_HCF_PRODUCER_BATCH_SIZE = 10000
 DEFAULT_HCF_CONSUMER_SLOT = 0
 DEFAULT_HCF_CONSUMER_MAX_BATCHES = 0
 DEFAULT_HCF_CONSUMER_MAX_REQUESTS = 0
-DEFAULT_HCF_MEMORY_BACKEND = 'frontera.contrib.backends.memory.MemoryFIFOBackend'
-DEFAULT_HCF_MEMORY_BACKEND_MAX_QUEUE = 10000
-
+DEFAULT_HCF_MEMORY_QUEUE_SIZE = 1000
 
 def _msg(msg, level=None):
     if log:
@@ -163,8 +161,8 @@ class HCFBackend(Backend):
 
     * HCF_AUTH - Hubstorage auth (not required if job run in scrapinghub or configured in scrapy.cfg)
     * HCF_PROJECT_ID - Hubstorage project id (not required if job run in scrapinghub or configured scrapy.cfg)
-    * HCF_MEMORY_BACKEND - Memory backend to use when don't want to store request in HCF
-    * HCF_MEMORY_BACKEND_MAX_QUEUE - Max memory queue size (above this, will be saved to disk)
+    * HCF_MEMORY_QUEUE_SIZE - Max memory queue size (above this, will be saved to disk)
+    * HCF_DISK_QUEUE - Backup class for memory queue in order to avoid to conserve all new requests in memory
 
     If is producer:
     * HCF_PRODUCER_FRONTIER - The frontier where URLs are written.
@@ -235,14 +233,12 @@ class HCFBackend(Backend):
         self.producer = None
         self.consumer = None
 
-        mbackend_cls = self.manager.settings.get('HCF_MEMORY_BACKEND', DEFAULT_HCF_MEMORY_BACKEND)
-        self.memory_backend = load_object(mbackend_cls)(manager)
-        self.max_memory_queue = self.manager.settings.get('HCF_MEMORY_BACKEND_MAX_QUEUE', DEFAULT_HCF_MEMORY_BACKEND_MAX_QUEUE)
+        self.max_memory_queue = self.manager.settings.get('HCF_MEMORY_QUEUE_SIZE', DEFAULT_HCF_MEMORY_QUEUE_SIZE)
 
+        self.memory_queue = MemQueue()
         self.disk_queue = None
 
     def frontier_start(self):
-        self.memory_backend.frontier_start()
         for attr in self.backend_settings:
             value = self.manager.settings.get(attr)
             if value is not None:
@@ -259,7 +255,6 @@ class HCFBackend(Backend):
         if self.disk_queue is not None:
             self.disk_queue.close()
 
-        self.memory_backend.frontier_stop()
         if self.producer:
             n_flushed_links = self.producer.flush()
             if n_flushed_links:
@@ -270,7 +265,8 @@ class HCFBackend(Backend):
             self.consumer.close()
 
     def add_seeds(self, seeds):
-        self.memory_backend.add_seeds(seeds)
+        for seed in seeds:
+            self.memory_queue.push(seed)
 
     def _page_crawled(self, requests):
         for request in requests:
@@ -284,10 +280,12 @@ class HCFBackend(Backend):
         direct_requests = list(self._page_crawled(links))
         to_mem = len(direct_requests)
         if self.disk_queue is not None:
-            to_mem = self.max_memory_queue - len(self.memory_backend.heap)
+            to_mem = self.max_memory_queue - len(self.memory_queue)
         if to_mem > 0:
             memory_requests, direct_requests = direct_requests[:to_mem], direct_requests[to_mem:]
-            self.memory_backend.page_crawled(response, memory_requests)
+            for request in memory_requests:
+                request.meta['depth'] = request.meta.get('depth', 0) + 1
+                self.memory_queue.push(request)
         for request in direct_requests:
             self.disk_queue.push(request)
 
@@ -295,14 +293,17 @@ class HCFBackend(Backend):
         if self.hcf_consumer_max_requests > 0:
             max_next_requests = min(max_next_requests, self.hcf_consumer_max_requests - self.n_consumed_requests)
         if self.consumer and not (self._consumer_max_batches_reached() or self._consumer_max_requests_reached()):
-            n_queued_requests = len(self.memory_backend.heap)
+            n_queued_requests = len(self.memory_queue)
             n_remaining_requests = max_next_requests - n_queued_requests
             if n_remaining_requests > 0:
                 for request in self._get_requests_from_hs(n_remaining_requests):
-                    self.memory_backend.heap.push(request)
-        requests_from_mem = self.memory_backend.get_next_requests(max_next_requests)
+                    self.memory_queue.push(request)
+        requests_count = 0
+        requests_from_mem = []
+        while self.memory_queue and requests_count < max_next_requests:
+            requests_from_mem.append(self.memory_queue.pop())
+            requests_count += 1
         requests_from_disk = []
-        requests_count = len(requests_from_mem)
         while self.disk_queue and requests_count < max_next_requests:
             requests_from_disk.append(self.disk_queue.pop())
             requests_count += 1

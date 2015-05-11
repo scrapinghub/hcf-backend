@@ -1,2 +1,2 @@
 hubstorage
--e git+https://github.com/scrapinghub/crawl-frontier@hcf_backend#egg=crawl-frontier
+-e git+https://github.com/scrapinghub/crawl-frontier@settings_override#egg=crawl-frontier

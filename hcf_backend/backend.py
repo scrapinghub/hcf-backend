@@ -373,7 +373,7 @@ class HCFBackend(Backend):
 
         hcf_request = link.meta.get('hcf_request', {})
         hcf_request.setdefault('fp', link.url)
-        hcf_request.setdefault('qdata', {})
+        hcf_request.setdefault('qdata', link.meta.get('qdata', {}))
 
         n_flushed_links = self.producer.add_request(slot, hcf_request)
         if n_flushed_links:

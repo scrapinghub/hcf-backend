@@ -1,5 +1,8 @@
 import os
-from os.path import join, exists
+import atexit
+import uuid
+import shutil
+from os.path import join
 from queuelib import PriorityQueue
 
 from frontera.utils.misc import load_object
@@ -9,6 +12,11 @@ class DiskQueue(object):
         self.dqclass = load_object(dqclasspath)
         self.request_model = request_model
         self.dq = PriorityQueue(self._dqfactory)
+        self.__dqdir = 'requests.queue-' + str(uuid.uuid1())
+        os.makedirs(self.__dqdir)
+        def _remove_dir():
+            shutil.rmtree(self.__dqdir)
+        atexit.register(_remove_dir)
         self.__ids_count = 0
         self.__func_ids = {} # double map func <-> id
 
@@ -23,14 +31,7 @@ class DiskQueue(object):
         return self.__func_ids[fid]
 
     def _dqfactory(self, priority):
-        return self.dqclass(join(self._get_dqdir(), 'p%s' % priority))
-
-    @staticmethod
-    def _get_dqdir():
-        dqdir = 'requests.queue'
-        if not exists(dqdir):
-            os.makedirs(dqdir)
-        return dqdir
+        return self.dqclass(join(self.__dqdir, 'p%s' % priority))
 
     def push(self, request):
         rdict = self.request_to_dict(request)

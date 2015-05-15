@@ -9,12 +9,15 @@ class DiskQueue(object):
         self.dqclass = load_object(dqclasspath)
         self.request_model = request_model
         self.dq = PriorityQueue(self._dqfactory)
-        self.__func_ids = {}
+        self.__ids_count = 0
+        self.__func_ids = {} # double map func <-> id
 
     def get_func_id(self, func):
-        objid = id(func)
-        self.__func_ids.setdefault(objid, func)
-        return objid
+        if func not in self.__func_ids:
+            self.__func_ids[func] = self.__ids_count
+            self.__func_ids[self.__ids_count] = func
+            self.__ids_count += 1
+        return self.__func_ids[func]
 
     def get_function_from_id(self, fid):
         return self.__func_ids[fid]

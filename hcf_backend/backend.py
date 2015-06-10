@@ -171,6 +171,7 @@ class HCFBackend(Backend):
     * HCF_PRODUCER_BATCH_SIZE - How often slot flush should be called. When a slot reaches the number, it is flushed.
     * HCF_GET_PRODUCER_SLOT(request) - Custom mapping from a request to a slot name where request must be stored. It receives an instance
             of the class given by REQUEST_MODEL frontier setting.
+    * HCF_STORE(request) - Boolean function. If True, store in HCF.
 
 
     If is consumer:
@@ -193,6 +194,7 @@ class HCFBackend(Backend):
         'HCF_PRODUCER_NUMBER_OF_SLOTS',
         'HCF_PRODUCER_BATCH_SIZE',
         'HCF_GET_PRODUCER_SLOT',
+        'HCF_STORE',
 
         'HCF_CONSUMER_FRONTIER',
         'HCF_CONSUMER_SLOT',
@@ -224,6 +226,7 @@ class HCFBackend(Backend):
         self.hcf_consumer_max_batches = DEFAULT_HCF_CONSUMER_MAX_BATCHES
         self.hcf_consumer_max_requests = DEFAULT_HCF_CONSUMER_MAX_REQUESTS
         self.hcf_make_request = self._make_request
+        self.hcf_store = self._is_hcf
 
         self.stats = self.manager.settings.get('STATS_MANAGER')
 
@@ -270,7 +273,7 @@ class HCFBackend(Backend):
 
     def _page_crawled(self, requests):
         for request in requests:
-            if self._is_hcf(request):
+            if self.hcf_store(request):
                 assert self.producer, 'HCF request received but backend is not defined as producer'
                 self._process_hcf_link(request)
             else:
@@ -344,7 +347,7 @@ class HCFBackend(Backend):
 
     def _make_request(self, fingerprint, qdata, request_cls):
         url = qdata.get('url', fingerprint)
-        return self.manager.make_request(url)
+        return request_cls(url, **qdata['request'])
 
     def _log_start_message(self):
         producer_message = 'NO'
@@ -365,16 +368,15 @@ class HCFBackend(Backend):
         _msg('HCF consumer: %s' % consumer_message)
 
     def _process_hcf_link(self, link):
-        if link.method != 'GET':
-            _msg("HCF does not support non GET requests (%s)" % link.url, log.ERROR)
-            return
+        link.meta.pop('origin_is_frontier', None)
+        hcf_request = {}
+        hcf_request.setdefault('fp', link.url)
+        qdata = {'request': {}}
+        for attr in ('method', 'headers', 'cookies', 'meta'):
+            qdata['request'][attr] = getattr(link, attr)
+        hcf_request['qdata'] = qdata
 
         slot = self.hcf_get_producer_slot(link)
-
-        hcf_request = link.meta.get('hcf_request', {})
-        hcf_request.setdefault('fp', link.url)
-        hcf_request.setdefault('qdata', link.meta.get('qdata', {}))
-
         n_flushed_links = self.producer.add_request(slot, hcf_request)
         if n_flushed_links:
             _msg('Flushing %d link(s) to slot %s' % (n_flushed_links, slot))
@@ -384,7 +386,7 @@ class HCFBackend(Backend):
 
     @staticmethod
     def _is_hcf(request_or_response):
-        return request_or_response.meta.get('cf_store', False)
+        return self.producer
 
     def _consumer_max_batches_reached(self):
         if not self.hcf_consumer_max_batches:

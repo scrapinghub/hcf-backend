@@ -51,6 +51,8 @@ DEFAULT_HCF_CONSUMER_MAX_BATCHES = 0
 DEFAULT_HCF_CONSUMER_MAX_REQUESTS = 0
 DEFAULT_HCF_MEMORY_QUEUE_SIZE = 1000
 
+DELAY_HS_READ = 30.0
+
 def _msg(msg, level=None):
     if log:
         log.msg('(HCFBackend) %s' % msg, level or log.INFO)
@@ -241,6 +243,8 @@ class HCFBackend(Backend):
         self.memory_queue = MemQueue()
         self.disk_queue = None
 
+        self._delay_next_requests_from_hs = 0.0
+
     def frontier_start(self):
         for attr in self.backend_settings:
             value = self.manager.settings.get(attr)
@@ -295,22 +299,24 @@ class HCFBackend(Backend):
     def get_next_requests(self, max_next_requests, **kwargs):
         if self.hcf_consumer_max_requests > 0:
             max_next_requests = min(max_next_requests, self.hcf_consumer_max_requests - self.n_consumed_requests)
-        if self.consumer and not (self._consumer_max_batches_reached() or self._consumer_max_requests_reached()):
-            n_queued_requests = len(self.memory_queue)
-            n_remaining_requests = max_next_requests - n_queued_requests
-            if n_remaining_requests > 0:
-                for request in self._get_requests_from_hs(n_remaining_requests):
-                    self.memory_queue.push(request)
+       
         requests_count = 0
-        requests_from_mem = []
+        requests = []
         while self.memory_queue and requests_count < max_next_requests:
-            requests_from_mem.append(self.memory_queue.pop())
+            requests.append(self.memory_queue.pop())
             requests_count += 1
-        requests_from_disk = []
+
         while self.disk_queue and requests_count < max_next_requests:
-            requests_from_disk.append(self.disk_queue.pop())
+            requests.append(self.disk_queue.pop())
             requests_count += 1
-        return requests_from_mem + requests_from_disk
+
+        if self.consumer and not (self._consumer_max_batches_reached() or self._consumer_max_requests_reached()) \
+                    and (not requests or self._delay_next_requests_from_hs < time.time()):
+            for request in self._get_requests_from_hs(max_next_requests - requests_count):
+                requests.append(request)
+            self._delay_next_requests_from_hs = time.time() + DELAY_HS_READ
+
+        return requests
 
     def _get_requests_from_hs(self, n_min_requests):
         return_requests = []
@@ -384,8 +390,7 @@ class HCFBackend(Backend):
         self.stats.inc_value(self._get_producer_stats_msg(slot))
         self.stats.inc_value(self._get_producer_stats_msg())
 
-    @staticmethod
-    def _is_hcf(request_or_response):
+    def _is_hcf(self, request_or_response):
         return self.producer
 
     def _consumer_max_batches_reached(self):
@@ -412,7 +417,6 @@ class HCFBackend(Backend):
                                        project_id=self.hcf_project_id,
                                        frontier=self.hcf_consumer_frontier)
             self.stats.set_value(self._get_consumer_stats_msg(), 0)
-            self.manager.settings.set('DELAY_ON_EMPTY', 30.0)
 
     def _producer_get_slot_callback(self, request):
         """Determine to which slot should be saved the request.

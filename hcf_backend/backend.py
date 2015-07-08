@@ -338,6 +338,7 @@ class HCFBackend(Backend):
                             'created_at': datetime.datetime.utcnow(),
                             'depth': 0,
                         })
+                        request.meta.setdefault('scrapy_meta', {})
                         return_requests.append(request)
                         self.n_consumed_requests += 1
                 consumed_batches_ids.append(batch_id)

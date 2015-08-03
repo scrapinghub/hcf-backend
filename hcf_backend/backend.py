@@ -230,7 +230,7 @@ class HCFBackend(Backend):
         self.hcf_make_request = self._make_request
         self.hcf_store = self._is_hcf
 
-        self.stats = self.manager.settings.get('STATS_MANAGER')
+        #self.stats = self.manager.settings.get('STATS_MANAGER')
 
         self.n_consumed_batches = 0
         self.n_consumed_requests = 0
@@ -330,7 +330,7 @@ class HCFBackend(Backend):
                 data = True
                 batch_id = batch['id']
                 requests = batch['requests']
-                self.stats.inc_value(self._get_consumer_stats_msg('requests'), len(requests))
+                #self.stats.inc_value(self._get_consumer_stats_msg('requests'), len(requests))
                 for fingerprint, qdata in requests:
                     request = self.hcf_make_request(fingerprint, qdata, self.manager.request_model)
                     if request is not None:
@@ -342,7 +342,7 @@ class HCFBackend(Backend):
                         return_requests.append(request)
                         self.n_consumed_requests += 1
                 consumed_batches_ids.append(batch_id)
-                self.stats.inc_value(self._get_consumer_stats_msg('batches'))
+                #self.stats.inc_value(self._get_consumer_stats_msg('batches'))
                 _msg('Reading %d request(s) from batch %s ' % (len(requests), batch_id))
 
             if consumed_batches_ids:
@@ -388,8 +388,8 @@ class HCFBackend(Backend):
         if n_flushed_links:
             _msg('Flushing %d link(s) to slot %s' % (n_flushed_links, slot))
 
-        self.stats.inc_value(self._get_producer_stats_msg(slot))
-        self.stats.inc_value(self._get_producer_stats_msg())
+        #self.stats.inc_value(self._get_producer_stats_msg(slot))
+        #self.stats.inc_value(self._get_producer_stats_msg())
 
     def _is_hcf(self, request_or_response):
         return self.producer
@@ -411,13 +411,13 @@ class HCFBackend(Backend):
                                        project_id=self.hcf_project_id,
                                        frontier=self.hcf_producer_frontier,
                                        batch_size=self.hcf_producer_batch_size)
-            self.stats.set_value(self._get_producer_stats_msg(), 0)
+            #self.stats.set_value(self._get_producer_stats_msg(), 0)
 
         if self.hcf_consumer_frontier:
             self.consumer = HCFManager(auth=self.hcf_auth,
                                        project_id=self.hcf_project_id,
                                        frontier=self.hcf_consumer_frontier)
-            self.stats.set_value(self._get_consumer_stats_msg(), 0)
+            #self.stats.set_value(self._get_consumer_stats_msg(), 0)
 
     def _producer_get_slot_callback(self, request):
         """Determine to which slot should be saved the request.

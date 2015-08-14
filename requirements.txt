@@ -1,2 +1,3 @@
 hubstorage
--e git+https://github.com/scrapinghub/crawl-frontier@settings_override#egg=crawl-frontier
+-e git+https://github.com/scrapinghub/frontera.git#egg=frontera
+-e git+git@github.com:scrapinghub/frontera-scrapy.git#egg=frontera_scrapy

@@ -294,7 +294,11 @@ class HCFBackend(Backend):
                 request.meta['depth'] = request.meta.get('depth', 0) + 1
                 self.memory_queue.push(request)
         for request in direct_requests:
-            self.disk_queue.push(request)
+            try:
+                self.disk_queue.push(request)
+            except ValueError:
+                _msg("Object %s not serializable. Added to memory queue" % repr(request), log.WARNING)
+                self.memory_queue.push(request)
 
     def get_next_requests(self, max_next_requests, **kwargs):
         if self.hcf_consumer_max_requests > 0:

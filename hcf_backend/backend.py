@@ -301,8 +301,6 @@ class HCFBackend(Backend):
                 self.memory_queue.push(request)
 
     def get_next_requests(self, max_next_requests, **kwargs):
-        if self.hcf_consumer_max_requests > 0:
-            max_next_requests = min(max_next_requests, self.hcf_consumer_max_requests - self.n_consumed_requests)
        
         requests_count = 0
         requests = []
@@ -314,13 +312,18 @@ class HCFBackend(Backend):
             requests.append(self.disk_queue.pop())
             requests_count += 1
 
+        if self.hcf_consumer_max_requests > 0:
+            hcf_max_next_requests = min(max_next_requests - requests_count, self.hcf_consumer_max_requests - self.n_consumed_requests)
+
+        hcf_requests = []
         if self.consumer and not (self._consumer_max_batches_reached() or self._consumer_max_requests_reached()) \
                     and (not requests or self._delay_next_requests_from_hs < time.time()):
-            for request in self._get_requests_from_hs(max_next_requests - requests_count):
-                requests.append(request)
-            self._delay_next_requests_from_hs = time.time() + DELAY_HS_READ
+            for request in self._get_requests_from_hs(hcf_max_next_requests):
+                hcf_requests.append(request)
+            if hcf_requests:
+                self._delay_next_requests_from_hs = time.time() + DELAY_HS_READ
 
-        return requests
+        return requests + hcf_requests
 
     def _get_requests_from_hs(self, n_min_requests):
         return_requests = []

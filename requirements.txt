@@ -1,3 +1,2 @@
 hubstorage==0.16.1
 -e git+https://github.com/scrapinghub/frontera.git#egg=frontera
--e git+git@github.com:scrapinghub/scrapy-frontera.git#egg=scrapy_frontera

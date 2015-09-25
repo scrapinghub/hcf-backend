@@ -373,14 +373,8 @@ class HCFBackend(Backend):
         This method must return a string value for the slot, and preferably be
         well defined, that is, return the same slot for the same request.
         """
-        if 'hcf_producer_slot' in request.meta:
-            return request.meta['hcf_producer_slot']
-
-        # Allow to specify the number of slots per-request basis.
-        n_slots = request.meta.get('hcf_producer_number_of_slots', self.hcf_producer_number_of_slots)
-
         fingerprint = request.meta['fingerprint']
-        slotno = str(int(fingerprint, 16) % n_slots)
+        slotno = str(int(fingerprint, 16) % self.hcf_producer_number_of_slots)
         slot = self._get_producer_slot_name(slotno)
         return slot
 

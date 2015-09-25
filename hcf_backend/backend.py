@@ -33,8 +33,6 @@ from hubstorage import HubstorageClient
 
 from frontera import Backend
 
-from .diskqueue import DiskQueue
-from .memqueue import MemQueue
 
 try:
     from scrapy import log
@@ -49,9 +47,6 @@ DEFAULT_HCF_PRODUCER_BATCH_SIZE = 10000
 DEFAULT_HCF_CONSUMER_SLOT = 0
 DEFAULT_HCF_CONSUMER_MAX_BATCHES = 0
 DEFAULT_HCF_CONSUMER_MAX_REQUESTS = 0
-DEFAULT_HCF_MEMORY_QUEUE_SIZE = 1000
-
-DELAY_HS_READ = 30.0
 
 def _msg(msg, level=None):
     if log:
@@ -163,8 +158,6 @@ class HCFBackend(Backend):
 
     * HCF_AUTH - Hubstorage auth (not required if job run in scrapinghub or configured in scrapy.cfg)
     * HCF_PROJECT_ID - Hubstorage project id (not required if job run in scrapinghub or configured scrapy.cfg)
-    * HCF_MEMORY_QUEUE_SIZE - Max memory queue size (above this, will be saved to disk)
-    * HCF_DISK_QUEUE - Backup class for memory queue in order to avoid to conserve all new requests in memory
 
     If is producer:
     * HCF_PRODUCER_FRONTIER - The frontier where URLs are written.
@@ -173,7 +166,6 @@ class HCFBackend(Backend):
     * HCF_PRODUCER_BATCH_SIZE - How often slot flush should be called. When a slot reaches the number, it is flushed.
     * HCF_GET_PRODUCER_SLOT(request) - Custom mapping from a request to a slot name where request must be stored. It receives an instance
             of the class given by REQUEST_MODEL frontier setting.
-    * HCF_STORE(request) - Boolean function. If True, store in HCF.
 
 
     If is consumer:
@@ -196,7 +188,6 @@ class HCFBackend(Backend):
         'HCF_PRODUCER_NUMBER_OF_SLOTS',
         'HCF_PRODUCER_BATCH_SIZE',
         'HCF_GET_PRODUCER_SLOT',
-        'HCF_STORE',
 
         'HCF_CONSUMER_FRONTIER',
         'HCF_CONSUMER_SLOT',
@@ -228,7 +219,6 @@ class HCFBackend(Backend):
         self.hcf_consumer_max_batches = DEFAULT_HCF_CONSUMER_MAX_BATCHES
         self.hcf_consumer_max_requests = DEFAULT_HCF_CONSUMER_MAX_REQUESTS
         self.hcf_make_request = self._make_request
-        self.hcf_store = self._is_hcf
 
         self.stats = self.manager.settings.get('STATS_MANAGER')
 
@@ -238,12 +228,6 @@ class HCFBackend(Backend):
         self.producer = None
         self.consumer = None
 
-        self.max_memory_queue = self.manager.settings.get('HCF_MEMORY_QUEUE_SIZE', DEFAULT_HCF_MEMORY_QUEUE_SIZE)
-
-        self.memory_queue = MemQueue()
-        self.disk_queue = None
-
-        self._delay_next_requests_from_hs = 0.0
 
     def frontier_start(self):
         for attr in self.backend_settings:
@@ -251,17 +235,9 @@ class HCFBackend(Backend):
             if value is not None:
                 setattr(self, attr.lower(), value)
         self._init_roles()
-        self.configure_dqueue(self.manager.settings.get('HCF_DISK_QUEUE'))
         self._log_start_message()
 
-    def configure_dqueue(self, dqclasspath):
-        if dqclasspath is not None:
-            self.disk_queue = DiskQueue(dqclasspath, self.manager.request_model)
-
     def frontier_stop(self):
-        if self.disk_queue is not None:
-            self.disk_queue.close()
-
         if self.producer:
             n_flushed_links = self.producer.flush()
             if n_flushed_links:
@@ -272,58 +248,27 @@ class HCFBackend(Backend):
             self.consumer.close()
 
     def add_seeds(self, seeds):
-        for seed in seeds:
-            self.memory_queue.push(seed)
-
-    def _page_crawled(self, requests):
-        for request in requests:
-            if self.hcf_store(request):
-                assert self.producer, 'HCF request received but backend is not defined as producer'
-                self._process_hcf_link(request)
-            else:
-                yield request # send to memory backend/disk
+        pass
 
     def page_crawled(self, response, links):
-        direct_requests = list(self._page_crawled(links))
-        to_mem = len(direct_requests)
-        if self.disk_queue is not None:
-            to_mem = self.max_memory_queue - len(self.memory_queue)
-        if to_mem > 0:
-            memory_requests, direct_requests = direct_requests[:to_mem], direct_requests[to_mem:]
-            for request in memory_requests:
-                request.meta['depth'] = request.meta.get('depth', 0) + 1
-                self.memory_queue.push(request)
-        for request in direct_requests:
-            try:
-                self.disk_queue.push(request)
-            except ValueError:
-                _msg("Object %s not serializable. Added to memory queue" % repr(request), log.WARNING)
-                self.memory_queue.push(request)
+        if links:
+            assert self.producer, 'HCF request received but backend is not configured as producer'
+            for request in links:
+                self._process_hcf_link(request)
 
     def get_next_requests(self, max_next_requests, **kwargs):
-       
-        requests_count = 0
-        requests = []
-        while self.memory_queue and requests_count < max_next_requests:
-            requests.append(self.memory_queue.pop())
-            requests_count += 1
 
-        while self.disk_queue and requests_count < max_next_requests:
-            requests.append(self.disk_queue.pop())
-            requests_count += 1
+        requests = []
 
         if self.hcf_consumer_max_requests > 0:
-            hcf_max_next_requests = min(max_next_requests - requests_count, self.hcf_consumer_max_requests - self.n_consumed_requests)
+            max_next_requests = min(max_next_requests, self.hcf_consumer_max_requests - self.n_consumed_requests)
 
-        hcf_requests = []
         if self.consumer and not (self._consumer_max_batches_reached() or self._consumer_max_requests_reached()) \
-                    and (not requests or self._delay_next_requests_from_hs < time.time()):
-            for request in self._get_requests_from_hs(hcf_max_next_requests):
-                hcf_requests.append(request)
-            if hcf_requests:
-                self._delay_next_requests_from_hs = time.time() + DELAY_HS_READ
+                    and max_next_requests:
+            for request in self._get_requests_from_hs(max_next_requests):
+                requests.append(request)
 
-        return requests + hcf_requests
+        return requests
 
     def _get_requests_from_hs(self, n_min_requests):
         return_requests = []
@@ -398,9 +343,6 @@ class HCFBackend(Backend):
         self.stats.inc_value(self._get_producer_stats_msg(slot))
         self.stats.inc_value(self._get_producer_stats_msg())
 
-    def _is_hcf(self, request_or_response):
-        return self.producer
-
     def _consumer_max_batches_reached(self):
         if not self.hcf_consumer_max_batches:
             return False
@@ -418,13 +360,11 @@ class HCFBackend(Backend):
                                        project_id=self.hcf_project_id,
                                        frontier=self.hcf_producer_frontier,
                                        batch_size=self.hcf_producer_batch_size)
-            self.stats.set_value(self._get_producer_stats_msg(), 0)
 
         if self.hcf_consumer_frontier:
             self.consumer = HCFManager(auth=self.hcf_auth,
                                        project_id=self.hcf_project_id,
                                        frontier=self.hcf_consumer_frontier)
-            self.stats.set_value(self._get_consumer_stats_msg(), 0)
 
     def _producer_get_slot_callback(self, request):
         """Determine to which slot should be saved the request.

@@ -28,16 +28,15 @@ from collections import defaultdict
 import datetime
 import requests as requests_lib
 import time
+import logging
 
 from hubstorage import HubstorageClient
 
 from frontera import Backend
 
 
-try:
-    from scrapy import log
-except ImportError:
-    log = None
+LOG = logging.getLogger(__name__)
+
 
 __all__ = ['HCFBackend']
 
@@ -47,10 +46,6 @@ DEFAULT_HCF_PRODUCER_BATCH_SIZE = 10000
 DEFAULT_HCF_CONSUMER_SLOT = 0
 DEFAULT_HCF_CONSUMER_MAX_BATCHES = 0
 DEFAULT_HCF_CONSUMER_MAX_REQUESTS = 0
-
-def _msg(msg, level=None):
-    if log:
-        log.msg('(HCFBackend) %s' % msg, level or log.INFO)
 
 
 class HCFManager(object):
@@ -90,14 +85,14 @@ class HCFManager(object):
             try:
                 return self._hcf.read(self._frontier, slot, mincount)
             except requests_lib.exceptions.ReadTimeout:
-                _msg("Could not read from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
-                                                                      self._hcf_retries), log.ERROR)
+                LOG.error("Could not read from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
+                                                                      self._hcf_retries))
             except requests_lib.exceptions.ConnectionError:
-                _msg("Connection error while reading from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
-                                                                      self._hcf_retries), log.ERROR)
+                LOG.error("Connection error while reading from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
+                                                                      self._hcf_retries))
             except requests_lib.exceptions.RequestException:
-                _msg("Error while reading from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
-                                                                      self._hcf_retries), log.ERROR)
+                LOG.error("Error while reading from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
+                                                                      self._hcf_retries))
             time.sleep(60 * (i + 1))
         return []
 
@@ -107,14 +102,14 @@ class HCFManager(object):
                 self._hcf.delete(self._frontier, slot, ids)
                 break
             except requests_lib.exceptions.ReadTimeout:
-                _msg("Could not delete ids from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
-                                                                            self._hcf_retries), log.ERROR)
+                LOG.error("Could not delete ids from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
+                                                                            self._hcf_retries))
             except requests_lib.exceptions.ConnectionError:
-                _msg("Connection error while deleting ids from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
-                                                                            self._hcf_retries), log.ERROR)
+                LOG.error("Connection error while deleting ids from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
+                                                                            self._hcf_retries))
             except requests_lib.exceptions.RequestException:
-                _msg("Error deleting ids from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
-                                                                            self._hcf_retries), log.ERROR)
+                LOG.error("Error deleting ids from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
+                                                                            self._hcf_retries))
             time.sleep(60 * (i + 1))
 
     def delete_slot(self, slot):
@@ -241,7 +236,7 @@ class HCFBackend(Backend):
         if self.producer:
             n_flushed_links = self.producer.flush()
             if n_flushed_links:
-                _msg('Flushing %d link(s) to all slots' % n_flushed_links)
+                LOG.info('Flushing %d link(s) to all slots' % n_flushed_links)
             self.producer.close()
 
         if self.consumer:
@@ -295,7 +290,7 @@ class HCFBackend(Backend):
                         self.n_consumed_requests += 1
                 consumed_batches_ids.append(batch_id)
                 self.stats.inc_value(self._get_consumer_stats_msg('batches'))
-                _msg('Reading %d request(s) from batch %s ' % (len(requests), batch_id))
+                LOG.info('Reading %d request(s) from batch %s ' % (len(requests), batch_id))
 
             if consumed_batches_ids:
                 self.consumer.delete(self.hcf_consumer_slot, consumed_batches_ids)
@@ -322,9 +317,9 @@ class HCFBackend(Backend):
         if self.consumer:
             consumer_message = '%s/%s' % (self.hcf_consumer_frontier,
                                           self.hcf_consumer_slot)
-        _msg('HCF project: %s' % self.hcf_project_id)
-        _msg('HCF producer: %s' % producer_message)
-        _msg('HCF consumer: %s' % consumer_message)
+        LOG.info('HCF project: %s' % self.hcf_project_id)
+        LOG.info('HCF producer: %s' % producer_message)
+        LOG.info('HCF consumer: %s' % consumer_message)
 
     def _process_hcf_link(self, link):
         link.meta.pop('origin_is_frontier', None)
@@ -338,7 +333,7 @@ class HCFBackend(Backend):
         slot = self.hcf_get_producer_slot(link)
         n_flushed_links = self.producer.add_request(slot, hcf_request)
         if n_flushed_links:
-            _msg('Flushing %d link(s) to slot %s' % (n_flushed_links, slot))
+            LOG.info('Flushing %d link(s) to slot %s' % (n_flushed_links, slot))
 
         self.stats.inc_value(self._get_producer_stats_msg(slot))
         self.stats.inc_value(self._get_producer_stats_msg())

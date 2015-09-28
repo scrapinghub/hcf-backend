@@ -147,9 +147,6 @@ class HCFBackend(Backend):
 
     def frontier_stop(self):
         if self.producer:
-            n_flushed_links = self.producer.flush()
-            if n_flushed_links:
-                LOG.info('Flushing %d link(s) to all slots' % n_flushed_links)
             self.producer.close()
 
         if self.consumer:
@@ -165,25 +162,26 @@ class HCFBackend(Backend):
                 self._process_hcf_link(request)
 
     def get_next_requests(self, max_next_requests, **kwargs):
-
         requests = []
-
         if self.hcf_consumer_max_requests > 0:
-            max_next_requests = min(max_next_requests, self.hcf_consumer_max_requests - self.n_consumed_requests)
+            max_next_requests = min(max_next_requests,
+                    self.hcf_consumer_max_requests - self.n_consumed_requests)
 
-        if self.consumer and not (self._consumer_max_batches_reached() or self._consumer_max_requests_reached()) \
-                    and max_next_requests:
+        if self.consumer \
+                and not (self._consumer_max_batches_reached()
+                        or self._consumer_max_requests_reached()) \
+                and max_next_requests:
             for request in self._get_requests_from_hs(max_next_requests):
                 requests.append(request)
-
         return requests
 
     def _get_requests_from_hs(self, n_min_requests):
         return_requests = []
         data = True
 
-        while data and len(return_requests) < n_min_requests and \
-                    not (self._consumer_max_batches_reached() or self._consumer_max_requests_reached()):
+        while data and len(return_requests) < n_min_requests \
+                and not (self._consumer_max_batches_reached()
+                        or self._consumer_max_requests_reached()):
             consumed_batches_ids = []
             data = False
             for batch in self.consumer.read(self.hcf_consumer_slot, n_min_requests):
@@ -192,7 +190,8 @@ class HCFBackend(Backend):
                 requests = batch['requests']
                 self.stats.inc_value(self._get_consumer_stats_msg('requests'), len(requests))
                 for fingerprint, qdata in requests:
-                    request = self.hcf_make_request(fingerprint, qdata, self.manager.request_model)
+                    request = self.hcf_make_request(fingerprint, qdata,
+                            self.manager.request_model)
                     if request is not None:
                         request.meta.update({
                             'created_at': datetime.datetime.utcnow(),
@@ -244,9 +243,7 @@ class HCFBackend(Backend):
         hcf_request['qdata'] = qdata
 
         slot = self.hcf_get_producer_slot(link)
-        n_flushed_links = self.producer.add_request(slot, hcf_request)
-        if n_flushed_links:
-            LOG.info('Flushing %d link(s) to slot %s' % (n_flushed_links, slot))
+        self.producer.add_request(slot, hcf_request)
 
         self.stats.inc_value(self._get_producer_stats_msg(slot))
         self.stats.inc_value(self._get_producer_stats_msg())
@@ -262,7 +259,6 @@ class HCFBackend(Backend):
         return self.n_consumed_requests >= self.hcf_consumer_max_requests
 
     def _init_roles(self):
-
         if self.hcf_producer_frontier:
             self.producer = HCFManager(auth=self.hcf_auth,
                                        project_id=self.hcf_project_id,

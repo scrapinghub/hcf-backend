@@ -3,11 +3,12 @@ import json
 
 class HCFSlot(object):
 
-    def __init__(self, client, frontier, slot, batch_size=100):
+    def __init__(self, client, frontier, slot, batch_size=100, callback=None):
         self.client = client
         self.frontier = frontier
         self.slot = slot
         self.batch_size = batch_size
+        self.callback = callback
         self._writer = self._get_writer()
         self.stats = {'newcount': 0}
 
@@ -19,6 +20,8 @@ class HCFSlot(object):
 
     def _inc_newcount(self, response):
         self.stats['newcount'] += json.loads(response.content)['newcount']
+        if self.callback is not None:
+            self.callback(self)
 
     def write(self, data):
         self.client.add(self.frontier, self.slot, data)

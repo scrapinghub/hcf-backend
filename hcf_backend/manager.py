@@ -12,18 +12,20 @@ LOG = logging.getLogger(__name__)
 
 class HCFManager(object):
 
-    def __init__(self, auth, project_id, batch_size=100, endpoint=None):
+    def __init__(self, auth, project_id, batch_size=100,
+            endpoint=None, callback=None):
         self._hs_client = HubstorageClient(auth=auth, endpoint=endpoint)
         self._hcf = self._hs_client.get_project(project_id).frontier
         self._batch_size = batch_size
         self._hcf_slots = {}
         self._hcf_retries = 10
+        self._callback = callback
 
     def create_slot_if_needed(self, frontier, slot):
         key = (frontier, slot)
         if key not in self._hcf_slots:
             self._hcf_slots[key] = HCFSlot(self._hcf, frontier, slot,
-                    batch_size=self._batch_size)
+                    batch_size=self._batch_size, callback=self._callback)
         return self._hcf_slots[key]
 
     def add_request(self, frontier, slot, request):

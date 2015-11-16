@@ -263,11 +263,21 @@ class HCFBackend(Backend):
     def _init_roles(self):
         hcf_manager = HCFManager(auth=self.hcf_auth,
                 project_id=self.hcf_project_id,
-                batch_size=self.hcf_producer_batch_size)
+                batch_size=self.hcf_producer_batch_size,
+                callback=self._inc_newcount)
         if self.hcf_producer_frontier:
             self.producer = hcf_manager
         if self.hcf_consumer_frontier:
             self.consumer = hcf_manager
+
+    def _inc_newcount(self, hcf_slot):
+        frontier, slot = hcf_slot.frontier, hcf_slot.slot
+        self.stats.set_value(self._get_producer_stats_msg(msg='newcount'),
+                hcf_slot.stats['newcount'])
+        self.stats.set_value(self._get_producer_stats_msg(frontier=frontier,
+            msg='newcount'), hcf_slot.stats['newcount'])
+        self.stats.set_value(self._get_producer_stats_msg(frontier=frontier,
+            slot=slot, msg='newcount'), hcf_slot.stats['newcount'])
 
     def _producer_get_slot_callback(self, request):
         """Determine to which slot should be saved the request.

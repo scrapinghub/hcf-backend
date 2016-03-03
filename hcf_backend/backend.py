@@ -236,8 +236,7 @@ class HCFBackend(Backend):
 
     def _process_hcf_link(self, link):
         link.meta.pop('origin_is_frontier', None)
-        hcf_request = {}
-        hcf_request.setdefault('fp', link.url)
+        hcf_request = {'fp': getattr(link, 'meta', {}).get('hcf_fingerprint', link.url)}
         qdata = {'request': {}}
         for attr in ('method', 'headers', 'cookies', 'meta'):
             qdata['request'][attr] = getattr(link, attr)

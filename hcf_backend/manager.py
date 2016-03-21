@@ -9,7 +9,7 @@ from hubstorage import HubstorageClient
 LOG = logging.getLogger(__name__)
 
 
-class HCFManager(object):
+class HubstorageCrawlFrontier(object):
 
     def __init__(self, auth, project_id, frontier, batch_size=0):
         self._hs_client = HubstorageClient(auth=auth)

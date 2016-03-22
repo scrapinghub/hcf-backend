@@ -2,6 +2,8 @@
 
 from frontera.core.components import Queue, Backend
 from frontera.core.models import Request
+from frontera.contrib.backends import CommonBackend
+from frontera.contrib.backends.memory import MemoryMetadata, MemoryStates
 from manager import HubstorageCrawlFrontier
 
 from datetime import datetime
@@ -75,13 +77,13 @@ class HCFQueue(Queue):
         pass
 
 
-class HCFBackend(Backend):
+class HCFBackend(CommonBackend):
 
     name = 'HCF Backend'
 
     def __init__(self, manager):
         settings = manager.settings
-        self._metadata = None
+        self._metadata = MemoryMetadata()
         self._queue = HCFQueue(manager.logger.backend,
                                settings.get('HCF_AUTH', None),
                                settings.get('HCF_PROJECT_ID'),
@@ -89,7 +91,7 @@ class HCFBackend(Backend):
                                settings.get('HCF_PRODUCER_BATCH_SIZE', 10000),
                                settings.get('HCF_PRODUCER_NUMBER_OF_SLOTS', 8),
                                settings.get('HCF_PRODUCER_SLOT_PREFIX', ''))
-        self._states = None
+        self._states = MemoryStates(20000)
         self.max_iterations = settings.get('HCF_CONSUMER_MAX_BATCHES', 0)
         self.consumer_slot = settings.get('HCF_CONSUMER_SLOT', 0)
         self.iteration = manager.iteration
@@ -99,32 +101,10 @@ class HCFBackend(Backend):
         return cls(manager)
 
     @property
-    def states(self):
-        return self._states
-
-    @property
-    def metadata(self):
-        return self._metadata
-
-    @property
     def queue(self):
         return self._queue
 
-    def frontier_stop(self):
-        pass
-
-    def frontier_start(self):
-        pass
-
-    def add_seeds(self, seeds):
-        pass
-
-    def page_crawled(self, response, links):
-        pass
-
-    def request_error(self, page, error):
-        # TODO: we could collect errored pages, and schedule them back to HCF
-        pass
+    # TODO: we could collect errored pages, and schedule them back to HCF
 
     def finished(self):
         return self.iteration > self.max_iterations

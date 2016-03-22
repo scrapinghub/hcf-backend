@@ -11,11 +11,13 @@ from frontera.contrib.backends.partitioners import FingerprintPartitioner
 
 
 class HCFQueue(Queue):
-    def __init__(self, logger, auth, project_id, frontier, batch_size, slots_count, slot_prefix):
+    def __init__(self, logger, auth, project_id, frontier, batch_size, flush_interval, slots_count, slot_prefix,
+                 cleanup_on_start):
         self.hcf = HubstorageCrawlFrontier(auth=auth,
                                            project_id=project_id,
                                            frontier=frontier,
-                                           batch_size=batch_size)
+                                           batch_size=batch_size,
+                                           flush_interval=flush_interval)
         self.hcf_slots_count = slots_count
         self.hcf_slot_prefix = slot_prefix
         self.logger = logger
@@ -23,11 +25,14 @@ class HCFQueue(Queue):
         self.partitions = [i for i in range(0, slots_count)]
         self.partitioner = FingerprintPartitioner(self.partitions)
 
+        if cleanup_on_start:
+            for partition_id in self.partitions:
+                self.hcf.delete_slot("%s%d" % (self.hcf_slot_prefix, partition_id))
+
     def frontier_start(self):
         pass
 
     def frontier_stop(self):
-        self.hcf.flush()
         for slot, batches in self.consumed_batches_ids:
             self.hcf.delete(slot, batches)
         self.hcf.close()
@@ -41,7 +46,7 @@ class HCFQueue(Queue):
                 batch_id = batch['id']
                 requests = batch['requests']
                 data = len(requests) == max_next_requests
-                self.logger.debug("got batch %d of size %d from HCF server" % (batch_id, len(requests)))
+                self.logger.debug("got batch %s of size %d from HCF server" % (batch_id, len(requests)))
                 for fingerprint, qdata in requests:
                     request = Request(qdata.get('url', fingerprint), **qdata['request'])
                     if request is not None:
@@ -51,13 +56,14 @@ class HCFQueue(Queue):
                         })
                         request.meta.setdefault('scrapy_meta', {})
                         return_requests.append(request)
-                self.consumed_batches_ids[partition_id].append(batch_id)
+                self.consumed_batches_ids.get(partition_id, []).append(batch_id)
         return return_requests
 
     def schedule(self, batch):
         for _, score, request, schedule in batch:
             if schedule:
                 self._process_hcf_link(request, score)
+        self.logger.info('scheduled %d links' % len(batch))
 
     def _process_hcf_link(self, link, score):
         link.meta.pop('origin_is_frontier', None)
@@ -69,12 +75,10 @@ class HCFQueue(Queue):
 
         partition_id = self.partitioner.partition(link.meta['fingerprint'])
         slot = self.hcf_slot_prefix + str(partition_id)
-        n_flushed_links = self.hcf.add_request(slot, hcf_request)
-        if n_flushed_links:
-            self.logger.info('flushing %d link(s) to slot %s' % (n_flushed_links, slot))
+        self.hcf.add_request(slot, hcf_request)
 
     def count(self):
-        pass
+        return 0
 
 
 class HCFBackend(CommonBackend):
@@ -89,8 +93,10 @@ class HCFBackend(CommonBackend):
                                settings.get('HCF_PROJECT_ID'),
                                settings.get('HCF_FRONTIER'),
                                settings.get('HCF_PRODUCER_BATCH_SIZE', 10000),
+                               settings.get('HCF_PRODUCER_FLUSH_INTERVAL', 120),
                                settings.get('HCF_PRODUCER_NUMBER_OF_SLOTS', 8),
-                               settings.get('HCF_PRODUCER_SLOT_PREFIX', ''))
+                               settings.get('HCF_PRODUCER_SLOT_PREFIX', ''),
+                               settings.get('HCF_CLEANUP_ON_START', False))
         self._states = MemoryStates(20000)
         self.max_iterations = settings.get('HCF_CONSUMER_MAX_BATCHES', 0)
         self.consumer_slot = settings.get('HCF_CONSUMER_SLOT', 0)
@@ -101,13 +107,25 @@ class HCFBackend(CommonBackend):
         return cls(manager)
 
     @property
+    def metadata(self):
+        return self._metadata
+
+    @property
     def queue(self):
         return self._queue
+
+    @property
+    def states(self):
+        return self._states
 
     # TODO: we could collect errored pages, and schedule them back to HCF
 
     def finished(self):
-        return self.iteration > self.max_iterations
+        if self.max_iterations:
+            return self.iteration > self.max_iterations
+        return super(HCFBackend, self).finished()
 
     def get_next_requests(self, max_n_requests, **kwargs):
-        return self.queue.get_next_requests(max_n_requests, self.consumer_slot, **kwargs)
+        batch = self.queue.get_next_requests(max_n_requests, self.consumer_slot, **kwargs)
+        self.queue_size -= len(batch)
+        return batch

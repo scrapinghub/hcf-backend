@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from frontera.core.components import Queue, Backend
+from frontera.core.components import Queue
 from frontera.core.models import Request
 from frontera.contrib.backends import CommonBackend
 from frontera.contrib.backends.memory import MemoryMetadata, MemoryStates
@@ -22,12 +22,12 @@ class HCFQueue(Queue):
         self.hcf_slot_prefix = slot_prefix
         self.logger = logger
         self.consumed_batches_ids = dict()
-        self.partitions = [i for i in range(0, slots_count)]
+        self.partitions = [self.hcf_slot_prefix+str(i) for i in range(0, slots_count)]
         self.partitioner = FingerprintPartitioner(self.partitions)
 
         if cleanup_on_start:
             for partition_id in self.partitions:
-                self.hcf.delete_slot("%s%d" % (self.hcf_slot_prefix, partition_id))
+                self.hcf.delete_slot(partition_id)
 
     def frontier_start(self):
         pass
@@ -42,6 +42,7 @@ class HCFQueue(Queue):
         data = True
         while data and len(return_requests) < max_next_requests:
             data = False
+            consumed = []
             for batch in self.hcf.read(partition_id, max_next_requests):
                 batch_id = batch['id']
                 requests = batch['requests']
@@ -56,7 +57,9 @@ class HCFQueue(Queue):
                         })
                         request.meta.setdefault('scrapy_meta', {})
                         return_requests.append(request)
-                self.consumed_batches_ids.get(partition_id, []).append(batch_id)
+                consumed.append(batch_id)
+            if consumed:
+                self.hcf.delete(partition_id, consumed)
         return return_requests
 
     def schedule(self, batch):
@@ -78,7 +81,15 @@ class HCFQueue(Queue):
         self.hcf.add_request(slot, hcf_request)
 
     def count(self):
-        return 0
+        """
+        Calculates lower estimate of items in the queue for all partitions.
+        :return: int
+        """
+        count = 0
+        for partition_id in self.partitions:
+            for batch in self.hcf.read(partition_id):
+                count += len(batch['requests'])
+        return count
 
 
 class HCFBackend(CommonBackend):
@@ -93,7 +104,7 @@ class HCFBackend(CommonBackend):
                                settings.get('HCF_PROJECT_ID'),
                                settings.get('HCF_FRONTIER'),
                                settings.get('HCF_PRODUCER_BATCH_SIZE', 10000),
-                               settings.get('HCF_PRODUCER_FLUSH_INTERVAL', 120),
+                               settings.get('HCF_PRODUCER_FLUSH_INTERVAL', 30),
                                settings.get('HCF_PRODUCER_NUMBER_OF_SLOTS', 8),
                                settings.get('HCF_PRODUCER_SLOT_PREFIX', ''),
                                settings.get('HCF_CLEANUP_ON_START', False))

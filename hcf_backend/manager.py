@@ -1,5 +1,5 @@
 import logging
-import time
+from time import time, sleep
 from collections import defaultdict
 
 import requests as requests_lib
@@ -11,21 +11,20 @@ LOG = logging.getLogger(__name__)
 
 class HubstorageCrawlFrontier(object):
 
-    def __init__(self, auth, project_id, frontier, batch_size=0):
+    def __init__(self, auth, project_id, frontier, batch_size=0, flush_interval=30):
         self._hs_client = HubstorageClient(auth=auth)
         self._hcf = self._hs_client.get_project(project_id).frontier
+        self._hcf.batch_size = batch_size
+        self._hcf.batch_interval = flush_interval
         self._frontier = frontier
         self._links_count = defaultdict(int)
         self._links_to_flush_count = defaultdict(int)
-        self._batch_size = batch_size
         self._hcf_retries = 10
 
     def add_request(self, slot, request):
         self._hcf.add(self._frontier, slot, [request])
         self._links_count[slot] += 1
         self._links_to_flush_count[slot] += 1
-        if self._batch_size and self._links_to_flush_count[slot] >= self._batch_size:
-            return self.flush(slot)
         return 0
 
     def flush(self, slot=None):
@@ -54,7 +53,7 @@ class HubstorageCrawlFrontier(object):
             except requests_lib.exceptions.RequestException:
                 LOG.error("Error while reading from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
                                                                       self._hcf_retries))
-            time.sleep(60 * (i + 1))
+            sleep(60 * (i + 1))
         return []
 
     def delete(self, slot, ids):
@@ -71,7 +70,7 @@ class HubstorageCrawlFrontier(object):
             except requests_lib.exceptions.RequestException:
                 LOG.error("Error deleting ids from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
                                                                             self._hcf_retries))
-            time.sleep(60 * (i + 1))
+            sleep(60 * (i + 1))
 
     def delete_slot(self, slot):
         self._hcf.delete_slot(self._frontier, slot)

@@ -3,8 +3,8 @@
 from frontera.core.components import Queue
 from frontera.core.models import Request
 from frontera.contrib.backends import CommonBackend
-from frontera.contrib.backends.memory import MemoryMetadata, MemoryStates
-from manager import HubstorageCrawlFrontier
+from frontera.contrib.backends.memory import MemoryMetadata
+from manager import HubstorageCrawlFrontier, HCFStates
 
 from datetime import datetime
 from frontera.contrib.backends.partitioners import FingerprintPartitioner
@@ -108,7 +108,10 @@ class HCFBackend(CommonBackend):
                                settings.get('HCF_PRODUCER_NUMBER_OF_SLOTS', 8),
                                settings.get('HCF_PRODUCER_SLOT_PREFIX', ''),
                                settings.get('HCF_CLEANUP_ON_START', False))
-        self._states = MemoryStates(20000)
+        self._states = HCFStates(settings.get('HCF_AUTH', None),
+                                 settings.get('HCF_PROJECT_ID'),
+                                 settings.get('HCF_FRONTIER'),
+                                 20000)
         self.max_iterations = settings.get('HCF_CONSUMER_MAX_BATCHES', 0)
         self.consumer_slot = settings.get('HCF_CONSUMER_SLOT', 0)
         self.iteration = manager.iteration

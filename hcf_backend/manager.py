@@ -38,7 +38,6 @@ class HCFStates(MemoryStates):
             if response.status_code != 200:
                 self.logger.error("%d %s", response.status_code, response.content)
                 self.logger.info(params)
-                assert response.status_code == 200
             try:
                 r = loads(response.content)
                 self.logger.debug("Removed %d, scanned %d", r["deleted"], r["scanned"])
@@ -82,7 +81,6 @@ class HCFStates(MemoryStates):
             if response.status_code != 200:
                 self.logger.error("%d %s", response.status_code, response.content)
                 self.logger.info(params)
-                assert response.status_code == 200
             for line in response.content.split('\n'):
                 if not line:
                     continue

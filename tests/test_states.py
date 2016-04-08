@@ -7,7 +7,7 @@ import logging
 
 
 def generate_fprint():
-    return ''.join(map(lambda x:choice('0123456789abcdef'), range(20)))
+    return ''.join(map(lambda x:choice('0123456789abcdef'), range(40)))
 
 
 def check_states(states, fprints, objs):
@@ -28,7 +28,7 @@ def check_states(states, fprints, objs):
 
 def test_states():
     logging.basicConfig(level=logging.DEBUG)
-    states = HCFStates('5f755afefab74ad9843c8d9a4633876b', 49484, 'test', 256)
+    states = HCFStates('5f755afefab74ad9843c8d9a4633876b', 49484, 'test', 256, True)
     states.frontier_start()
     objs = []
     fprints = []

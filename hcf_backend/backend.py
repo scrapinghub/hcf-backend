@@ -111,7 +111,8 @@ class HCFBackend(CommonBackend):
         self._states = HCFStates(settings.get('HCF_AUTH', None),
                                  settings.get('HCF_PROJECT_ID'),
                                  settings.get('HCF_FRONTIER'),
-                                 20000)
+                                 20000,
+                                 settings.get('HCF_CLEANUP_ON_START', False))
         self.max_iterations = settings.get('HCF_CONSUMER_MAX_BATCHES', 0)
         self.consumer_slot = settings.get('HCF_CONSUMER_SLOT', 0)
         self.iteration = manager.iteration

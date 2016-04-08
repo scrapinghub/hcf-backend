@@ -21,42 +21,63 @@ class HCFStates(MemoryStates):
         self._collections = project.collections
         self._colname = colname
         self.logger = logging.getLogger("HCFStates")
+        #self.logger.addHandler(logging.StreamHandler())
 
     def frontier_start(self):
         self._store = self._collections.new_store(self._colname + "_states")
+
+    def frontier_stop(self):
+        self.logger.debug("Got frontier stop.")
+        self.flush()
+        self._hs_client.close()
+
+    def _hcf_fetch(self, to_fetch):
+        finished = False
+        i = iter(to_fetch)
+        while True:
+            prepared_keys = []
+            while True:
+                try:
+                    prepared_keys.append("key=%s" % i.next())
+                    if len(prepared_keys) > 32:
+                        break
+                except StopIteration:
+                    finished = True
+                    break
+
+            prepared_keys.append("meta=_key")
+            params = {'method':'GET',
+                      'url':'https://storage.scrapinghub.com/collections/%d/s/%s' % (self.projectid, self._store.colname),
+                      'params':str('&').join(prepared_keys),
+                      'auth':self._hs_client.auth}
+            start = time()
+            response = self._hs_client.session.request(**params)
+            self.logger.debug("Fetch request time %f ms", (time()-start) * 1000)
+            if response.status_code != 200:
+                self.logger.error("%d %s", response.status_code, response.content)
+                self.logger.info(params)
+                assert response.status_code == 200
+            for line in response.content.split('\n'):
+                if not line:
+                    continue
+                try:
+                    yield loads(line)
+                except ValueError, ve:
+                    self.logger.debug(ve)
+                    self.logger.debug("content: %s (%d)" % (line, len(line)))
+            if finished:
+                break
 
     def fetch(self, fingerprints):
         to_fetch = [f for f in fingerprints if f not in self._cache]
         self.logger.debug("cache size %s" % len(self._cache))
         self.logger.debug("to fetch %d from %d" % (len(to_fetch), len(fingerprints)))
-
         if not to_fetch:
             return
-        prepared_keys = ["key=%s" % f for f in to_fetch]
-        prepared_keys.append("&meta=_key")
-        params = {'method':'GET',
-                  'url':'https://storage.scrapinghub.com/collections/%d/s/%s' % (self.projectid, self._store.colname),
-                  'params':str('&').join(prepared_keys),
-                  'auth':self._hs_client.auth}
-        start = time()
-        response = self._hs_client.session.request(**params)
-        self.logger.debug("Fetch request time %f ms", (time()-start) * 1000)
-        if response.status_code != 200:
-            self.logger.error("%d %s", response.status_code, response.content)
-            self.logger.info(params)
-            assert response.status_code == 200
         count = 0
-        for line in response.content.split('\n'):
-            if not line:
-                continue
-            try:
-                o = loads(line)
-            except ValueError, ve:
-                self.logger.debug(ve)
-                self.logger.debug("content: %s (%d)" % (line, len(line)))
-            else:
-                self._cache[o['_key']] = o['value']
-                count += 1
+        for o in self._hcf_fetch(to_fetch):
+            self._cache[o['_key']] = o['value']
+            count += 1
         self.logger.debug("Fetched %d items" % count)
 
     def flush(self, force_clear=False):

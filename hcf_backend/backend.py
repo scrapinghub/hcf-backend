@@ -33,8 +33,6 @@ class HCFQueue(Queue):
         pass
 
     def frontier_stop(self):
-        for slot, batches in self.consumed_batches_ids:
-            self.hcf.delete(slot, batches)
         self.hcf.close()
 
     def get_next_requests(self, max_next_requests, partition_id, **kwargs):
@@ -63,10 +61,12 @@ class HCFQueue(Queue):
         return return_requests
 
     def schedule(self, batch):
+        scheduled = 0
         for _, score, request, schedule in batch:
             if schedule:
                 self._process_hcf_link(request, score)
-        self.logger.info('scheduled %d links' % len(batch))
+                scheduled += 1
+        self.logger.info('scheduled %d links' % scheduled)
 
     def _process_hcf_link(self, link, score):
         link.meta.pop('origin_is_frontier', None)

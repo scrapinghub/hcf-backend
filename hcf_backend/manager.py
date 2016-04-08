@@ -13,18 +13,44 @@ LOG = logging.getLogger(__name__)
 
 class HCFStates(MemoryStates):
 
-    def __init__(self, auth, project_id, colname, cache_size_limit):
+    def __init__(self, auth, project_id, colname, cache_size_limit, cleanup_on_start):
         super(HCFStates, self).__init__(cache_size_limit)
         self._hs_client = HubstorageClient(auth=auth)
         self.projectid = project_id
         project = self._hs_client.get_project(self.projectid)
         self._collections = project.collections
-        self._colname = colname
+        self._colname = colname + "_states"
         self.logger = logging.getLogger("HCFStates")
         #self.logger.addHandler(logging.StreamHandler())
 
+        if cleanup_on_start:
+            self._cleanup()
+
+    def _cleanup(self):
+        while True:
+            nextstart = None
+            params = {'method':'DELETE',
+                      'url':'https://storage.scrapinghub.com/collections/%d/s/%s' % (self.projectid, self._colname),
+                      'auth':self._hs_client.auth}
+            if nextstart:
+                params['prefix'] = nextstart
+            response = self._hs_client.session.request(**params)
+            if response.status_code != 200:
+                self.logger.error("%d %s", response.status_code, response.content)
+                self.logger.info(params)
+                assert response.status_code == 200
+            try:
+                r = loads(response.content)
+                self.logger.debug("Removed %d, scanned %d", r["deleted"], r["scanned"])
+                nextstart = r.get('nextstart')
+            except ValueError, ve:
+                self.logger.debug(ve)
+                self.logger.debug("content: %s (%d)" % (response.content, len(response.content)))
+            if not nextstart:
+                break
+
     def frontier_start(self):
-        self._store = self._collections.new_store(self._colname + "_states")
+        self._store = self._collections.new_store(self._colname)
 
     def frontier_stop(self):
         self.logger.debug("Got frontier stop.")
@@ -47,7 +73,7 @@ class HCFStates(MemoryStates):
 
             prepared_keys.append("meta=_key")
             params = {'method':'GET',
-                      'url':'https://storage.scrapinghub.com/collections/%d/s/%s' % (self.projectid, self._store.colname),
+                      'url':'https://storage.scrapinghub.com/collections/%d/s/%s' % (self.projectid, self._colname),
                       'params':str('&').join(prepared_keys),
                       'auth':self._hs_client.auth}
             start = time()
@@ -87,7 +113,7 @@ class HCFStates(MemoryStates):
         try:
             for fprint, state_val in self._cache.iteritems():
                 buffer.append({'_key': fprint, 'value':state_val})
-                if len(buffer) > 64:
+                if len(buffer) > 1024:
                     count += len(buffer)
                     self._store.set(buffer)
                     buffer = []

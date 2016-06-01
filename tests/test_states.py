@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import config
 from hcf_backend.manager import HCFStates
 from frontera.core.models import Request
 from random import randint, choice
@@ -28,7 +29,7 @@ def check_states(states, fprints, objs):
 
 def test_states():
     logging.basicConfig(level=logging.DEBUG)
-    states = HCFStates('5f755afefab74ad9843c8d9a4633876b', 49484, 'test', 256, True)
+    states = HCFStates(config.API_KEY, config.PROJECT_ID, config.FRONTIER_NAME, 256, True)
     states.frontier_start()
     objs = []
     fprints = []

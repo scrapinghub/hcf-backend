@@ -4,14 +4,15 @@ from frontera.core.components import Queue
 from frontera.core.models import Request
 from frontera.contrib.backends import CommonBackend
 from frontera.contrib.backends.memory import MemoryMetadata
+from frontera.contrib.backends.partitioners import FingerprintPartitioner
 from manager import HubstorageCrawlFrontier, HCFStates
 
 from datetime import datetime
-from frontera.contrib.backends.partitioners import FingerprintPartitioner
+import logging
 
 
 class HCFQueue(Queue):
-    def __init__(self, logger, auth, project_id, frontier, batch_size, flush_interval, slots_count, slot_prefix,
+    def __init__(self, auth, project_id, frontier, batch_size, flush_interval, slots_count, slot_prefix,
                  cleanup_on_start):
         self.hcf = HubstorageCrawlFrontier(auth=auth,
                                            project_id=project_id,
@@ -20,7 +21,7 @@ class HCFQueue(Queue):
                                            flush_interval=flush_interval)
         self.hcf_slots_count = slots_count
         self.hcf_slot_prefix = slot_prefix
-        self.logger = logger
+        self.logger = logging.getLogger("hcf.queue")
         self.consumed_batches_ids = dict()
         self.partitions = [self.hcf_slot_prefix+str(i) for i in range(0, slots_count)]
         self.partitioner = FingerprintPartitioner(self.partitions)
@@ -99,8 +100,7 @@ class HCFBackend(CommonBackend):
     def __init__(self, manager):
         settings = manager.settings
         self._metadata = MemoryMetadata()
-        self._queue = HCFQueue(manager.logger.backend,
-                               settings.get('HCF_AUTH', None),
+        self._queue = HCFQueue(settings.get('HCF_AUTH', None),
                                settings.get('HCF_PROJECT_ID'),
                                settings.get('HCF_FRONTIER'),
                                settings.get('HCF_PRODUCER_BATCH_SIZE', 10000),

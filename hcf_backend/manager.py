@@ -8,8 +8,6 @@ from frontera.contrib.backends.memory import MemoryStates
 from json import loads
 from time import time
 
-LOG = logging.getLogger(__name__)
-
 
 class HCFStates(MemoryStates):
 
@@ -20,8 +18,7 @@ class HCFStates(MemoryStates):
         project = self._hs_client.get_project(self.projectid)
         self._collections = project.collections
         self._colname = colname + "_states"
-        self.logger = logging.getLogger("HCFStates")
-        #self.logger.addHandler(logging.StreamHandler())
+        self.logger = logging.getLogger("hcf.tates")
 
         if cleanup_on_start:
             self._cleanup()
@@ -134,6 +131,7 @@ class HubstorageCrawlFrontier(object):
         self._links_count = defaultdict(int)
         self._links_to_flush_count = defaultdict(int)
         self._hcf_retries = 10
+        self.logger = logging.getLogger("hubstorage-wrapper")
 
     def add_request(self, slot, request):
         self._hcf.add(self._frontier, slot, [request])
@@ -159,13 +157,13 @@ class HubstorageCrawlFrontier(object):
             try:
                 return self._hcf.read(self._frontier, slot, mincount)
             except requests_lib.exceptions.ReadTimeout:
-                LOG.error("Could not read from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
+                self.logger.error("Could not read from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
                                                                       self._hcf_retries))
             except requests_lib.exceptions.ConnectionError:
-                LOG.error("Connection error while reading from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
+                self.logger.error("Connection error while reading from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
                                                                       self._hcf_retries))
             except requests_lib.exceptions.RequestException:
-                LOG.error("Error while reading from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
+                self.logger.error("Error while reading from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
                                                                       self._hcf_retries))
             sleep(60 * (i + 1))
         return []
@@ -176,13 +174,13 @@ class HubstorageCrawlFrontier(object):
                 self._hcf.delete(self._frontier, slot, ids)
                 break
             except requests_lib.exceptions.ReadTimeout:
-                LOG.error("Could not delete ids from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
+                self.logger.error("Could not delete ids from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
                                                                             self._hcf_retries))
             except requests_lib.exceptions.ConnectionError:
-                LOG.error("Connection error while deleting ids from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
+                self.logger.error("Connection error while deleting ids from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
                                                                             self._hcf_retries))
             except requests_lib.exceptions.RequestException:
-                LOG.error("Error deleting ids from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
+                self.logger.error("Error deleting ids from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
                                                                             self._hcf_retries))
             sleep(60 * (i + 1))
 

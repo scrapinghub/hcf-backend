@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import config
-from hcf_backend.backend import HCFQueue
+from hcf_backend import HCFQueue
 from frontera.core.models import Request
 from time import sleep
 import logging

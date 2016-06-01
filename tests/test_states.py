@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import config
-from hcf_backend.manager import HCFStates
+from hcf_backend import HCFStates
 from frontera.core.models import Request
 from random import randint, choice
 from sys import maxint

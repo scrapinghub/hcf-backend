@@ -124,7 +124,7 @@ class HCFStates(MemoryStates):
         super(HCFStates, self).flush(force_clear)
 
 
-class HubstorageCrawlFrontier(object):
+class HCFClientWrapper(object):
 
     def __init__(self, auth, project_id, frontier, batch_size=0, flush_interval=30):
         self._hs_client = HubstorageClient(auth=auth)
@@ -211,11 +211,11 @@ class HubstorageCrawlFrontier(object):
 class HCFQueue(Queue):
     def __init__(self, auth, project_id, frontier, batch_size, flush_interval, slots_count, slot_prefix,
                  cleanup_on_start):
-        self.hcf = HubstorageCrawlFrontier(auth=auth,
-                                           project_id=project_id,
-                                           frontier=frontier,
-                                           batch_size=batch_size,
-                                           flush_interval=flush_interval)
+        self.hcf = HCFClientWrapper(auth=auth,
+                                    project_id=project_id,
+                                    frontier=frontier,
+                                    batch_size=batch_size,
+                                    flush_interval=flush_interval)
         self.hcf_slots_count = slots_count
         self.hcf_slot_prefix = slot_prefix
         self.logger = logging.getLogger("hcf.queue")

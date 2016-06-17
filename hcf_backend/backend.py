@@ -238,8 +238,9 @@ class HCFBackend(Backend):
         link.meta.pop('origin_is_frontier', None)
         hcf_request = {'fp': getattr(link, 'meta', {}).get('frontier_fingerprint', link.url)}
         qdata = {'request': {}}
-        for attr in ('url', 'method', 'headers', 'cookies', 'meta'):
+        for attr in ('method', 'headers', 'cookies', 'meta'):
             qdata['request'][attr] = getattr(link, attr)
+            qdata['url'] = getattr(link, 'url')
         hcf_request['qdata'] = qdata
 
         slot = self.hcf_get_producer_slot(link)

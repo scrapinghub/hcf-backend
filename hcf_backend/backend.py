@@ -281,7 +281,8 @@ class HCFBackend(Backend):
         """Determine to which slot should be saved the request.
 
         This provides a default implementation that distributes urls among the
-        available number of slots based in the URL hash.
+        available number of slots based in the URL hash. Will be overriden if
+        HCF_GET_PRODUCER_SLOT setting is provided with a different method
 
         Depending on the urls, this distribution might or not be evenly among
         the slots.

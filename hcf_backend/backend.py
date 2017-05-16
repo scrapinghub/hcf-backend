@@ -156,7 +156,7 @@ class HCFBackend(Backend):
         if self.producer:
             n_flushed_links = self.producer.flush()
             if n_flushed_links:
-                LOG.info('Flushing %d link(s) to all slots' % n_flushed_links)
+                LOG.info('Flushing %d link(s) to all slots', n_flushed_links)
             self.producer.close()
 
         if self.consumer:
@@ -213,7 +213,7 @@ class HCFBackend(Backend):
                 self.consumed_batches_ids.append(batch_id)
                 self.n_consumed_batches += 1
                 self.stats.inc_value(self._get_consumer_stats_msg('batches'))
-                LOG.info('Reading %d request(s) from batch %s ' % (len(requests), batch_id))
+                LOG.info('Reading %d request(s) from batch %s ', len(requests), batch_id)
 
             if not self.hcf_consumer_dont_delete_requests and not self.hcf_consumer_delete_batches_on_stop:
                 self.delete_read_batches()
@@ -243,9 +243,9 @@ class HCFBackend(Backend):
         if self.consumer:
             consumer_message = '%s/%s' % (self.hcf_consumer_frontier,
                                           self.hcf_consumer_slot)
-        LOG.info('HCF project: %s' % self.hcf_project_id)
-        LOG.info('HCF producer: %s' % producer_message)
-        LOG.info('HCF consumer: %s' % consumer_message)
+        LOG.info('HCF project: %s', self.hcf_project_id)
+        LOG.info('HCF producer: %s', producer_message)
+        LOG.info('HCF consumer: %s', consumer_message)
 
     def _process_hcf_link(self, link):
         link.meta.pop('origin_is_frontier', None)
@@ -259,7 +259,7 @@ class HCFBackend(Backend):
         slot = self.hcf_get_producer_slot(link)
         n_flushed_links = self.producer.add_request(slot, hcf_request)
         if n_flushed_links:
-            LOG.info('Flushing %d link(s) to slot %s' % (n_flushed_links, slot))
+            LOG.info('Flushing %d link(s) to slot %s', n_flushed_links, slot)
 
         self.stats.inc_value(self._get_producer_stats_msg(slot))
         self.stats.inc_value(self._get_producer_stats_msg())

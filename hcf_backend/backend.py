@@ -83,6 +83,8 @@ class HCFBackend(Backend):
     * HCF_CONSUMER_MAX_REQUESTS - Max request to be read from hubstorage.
         (note: crawler stops to read from hcf when any of max batches or max requests limit are reached)
     * HCF_CONSUMER_DONT_DELETE_REQUESTS - If given and True, don't delete requests from frontier once read. For testing purposes.
+    * HCF_CONSUMER_DELETE_BATCHES_ON_STOP - If given and True, read batches will be deleted when the job finishes. Default is
+        to delete batches once read.
     * HCF_MAKE_REQUEST(fingerprint, qdata, request_cls) - Custom build of request from the frontier data. It must return None or an
             instance of the class specified in request_cls. If returns None, the request is ignored. Used in consumer spider.
     """
@@ -102,6 +104,7 @@ class HCFBackend(Backend):
         'HCF_CONSUMER_MAX_BATCHES',
         'HCF_CONSUMER_MAX_REQUESTS',
         'HCF_CONSUMER_DONT_DELETE_REQUESTS',
+        'HCF_CONSUMER_DELETE_BATCHES_ON_STOP',
         'HCF_MAKE_REQUEST',
     )
 
@@ -128,6 +131,7 @@ class HCFBackend(Backend):
         self.hcf_consumer_max_batches = DEFAULT_HCF_CONSUMER_MAX_BATCHES
         self.hcf_consumer_max_requests = DEFAULT_HCF_CONSUMER_MAX_REQUESTS
         self.hcf_consumer_dont_delete_requests = False
+        self.hcf_consumer_delete_batches_on_stop = False
         self.hcf_make_request = self._make_request
 
         self.stats = self.manager.settings.get('STATS_MANAGER')
@@ -138,6 +142,7 @@ class HCFBackend(Backend):
         self.producer = None
         self.consumer = None
 
+        self.consumed_batches_ids = []
 
     def frontier_start(self):
         for attr in self.backend_settings:
@@ -155,6 +160,9 @@ class HCFBackend(Backend):
             self.producer.close()
 
         if self.consumer:
+            if not self.hcf_consumer_dont_delete_requests:
+                self.delete_read_batches()
+
             self.consumer.close()
 
     def add_seeds(self, seeds):
@@ -186,7 +194,6 @@ class HCFBackend(Backend):
 
         while data and len(return_requests) < n_min_requests and \
                     not (self._consumer_max_batches_reached() or self._consumer_max_requests_reached()):
-            consumed_batches_ids = []
             data = False
             for batch in self.consumer.read(self.hcf_consumer_slot, n_min_requests):
                 data = True
@@ -203,17 +210,20 @@ class HCFBackend(Backend):
                         request.meta.setdefault('scrapy_meta', {})
                         return_requests.append(request)
                         self.n_consumed_requests += 1
-                consumed_batches_ids.append(batch_id)
+                self.consumed_batches_ids.append(batch_id)
+                self.n_consumed_batches += 1
                 self.stats.inc_value(self._get_consumer_stats_msg('batches'))
                 LOG.info('Reading %d request(s) from batch %s ' % (len(requests), batch_id))
 
-            if consumed_batches_ids:
-                if not self.hcf_consumer_dont_delete_requests:
-                    self.consumer.delete(self.hcf_consumer_slot, consumed_batches_ids)
-                self.n_consumed_batches += len(consumed_batches_ids)
-
+            if not self.hcf_consumer_dont_delete_requests and not self.hcf_consumer_delete_batches_on_stop:
+                self.delete_read_batches()
 
         return return_requests
+
+    def delete_read_batches(self):
+        if self.consumed_batches_ids:
+            self.consumer.delete(self.hcf_consumer_slot, self.consumed_batches_ids)
+        self.consumed_batches_ids = []
 
     def _make_request(self, fingerprint, qdata, request_cls):
         url = qdata.get('url', fingerprint)

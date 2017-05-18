@@ -3,7 +3,7 @@ import time
 from collections import defaultdict
 
 import requests as requests_lib
-from hubstorage import HubstorageClient
+from scrapinghub.hubstorage import HubstorageClient
 
 
 LOG = logging.getLogger(__name__)

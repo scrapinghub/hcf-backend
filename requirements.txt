@@ -1,2 +1,2 @@
-hubstorage==0.16.1
--e git+https://github.com/scrapinghub/frontera.git#egg=frontera
+scrapinghub==1.9.0
+frontera==0.3.3

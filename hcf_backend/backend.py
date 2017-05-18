@@ -166,13 +166,12 @@ class HCFBackend(Backend):
             self.consumer.close()
 
     def add_seeds(self, seeds):
-        pass
+        for request in seeds:
+            self._process_hcf_link(request)
 
     def page_crawled(self, response, links):
-        if links:
-            assert self.producer, 'HCF request received but backend is not configured as producer'
-            for request in links:
-                self._process_hcf_link(request)
+        for request in links:
+            self._process_hcf_link(request)
 
     def get_next_requests(self, max_next_requests, **kwargs):
 
@@ -248,6 +247,7 @@ class HCFBackend(Backend):
         LOG.info('HCF consumer: %s', consumer_message)
 
     def _process_hcf_link(self, link):
+        assert self.producer, 'HCF request received but backend is not configured as producer'
         link.meta.pop('origin_is_frontier', None)
         hcf_request = {'fp': getattr(link, 'meta', {}).get('frontier_fingerprint', link.url)}
         qdata = {'request': {}}

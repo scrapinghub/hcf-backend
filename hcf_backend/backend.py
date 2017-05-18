@@ -197,6 +197,8 @@ class HCFBackend(Backend):
             for batch in self.consumer.read(self.hcf_consumer_slot, n_min_requests):
                 data = True
                 batch_id = batch['id']
+                if batch_id in self.consumed_batches_ids:
+                    return return_requests
                 requests = batch['requests']
                 self.stats.inc_value(self._get_consumer_stats_msg('requests'), len(requests))
                 for fingerprint, qdata in requests:

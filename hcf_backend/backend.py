@@ -158,6 +158,12 @@ class HCFBackend(Backend):
             if n_flushed_links:
                 LOG.info('Flushing %d link(s) to all slots', n_flushed_links)
             self.producer.close()
+            try:
+                newcount = self.producer._hcf.newcount
+            except Exception:
+                pass
+            else:
+                self.stats.set_value(self._get_producer_stats_msg(msg='new_links'), newcount)
 
         if self.consumer:
             if not self.hcf_consumer_dont_delete_requests:
@@ -263,8 +269,8 @@ class HCFBackend(Backend):
         if n_flushed_links:
             LOG.info('Flushing %d link(s) to slot %s', n_flushed_links, slot)
 
-        self.stats.inc_value(self._get_producer_stats_msg(slot))
-        self.stats.inc_value(self._get_producer_stats_msg())
+        self.stats.inc_value(self._get_producer_stats_msg(slot, msg='total_links'))
+        self.stats.inc_value(self._get_producer_stats_msg(msg='total_links'))
 
     def _consumer_max_batches_reached(self):
         if not self.hcf_consumer_max_batches:

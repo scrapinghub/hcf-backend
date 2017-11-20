@@ -3,7 +3,7 @@ import time
 from collections import defaultdict
 
 import requests as requests_lib
-from scrapinghub.hubstorage import HubstorageClient
+from scrapinghub import ScrapinghubClient
 
 
 LOG = logging.getLogger(__name__)
@@ -12,16 +12,16 @@ LOG = logging.getLogger(__name__)
 class HCFManager(object):
 
     def __init__(self, auth, project_id, frontier, batch_size=0):
-        self._hs_client = HubstorageClient(auth=auth)
-        self._hcf = self._hs_client.get_project(project_id).frontier
-        self._frontier = frontier
+        self._client = ScrapinghubClient(auth=auth)
+        self._hcf = self._client.get_project(project_id).frontiers
+        self._frontier = self._hcf.get(frontier)
         self._links_count = defaultdict(int)
         self._links_to_flush_count = defaultdict(int)
         self._batch_size = batch_size
         self._hcf_retries = 10
 
     def add_request(self, slot, request):
-        self._hcf.add(self._frontier, slot, [request])
+        self._frontier.get(slot).q.add([request])
         self._links_count[slot] += 1
         self._links_to_flush_count[slot] += 1
         if self._batch_size and self._links_to_flush_count[slot] >= self._batch_size:
@@ -36,49 +36,53 @@ class HCFManager(object):
                 for slot in self._links_to_flush_count.keys():
                     self._links_to_flush_count[slot] = 0
             else:
-                writer = self._hcf._get_writer(self._frontier, slot)
-                writer.flush()
+                slot_obj = self._frontier.get(slot)
+                slot_obj.flush()
                 self._links_to_flush_count[slot] = 0
         return n_links_to_flush
 
     def read(self, slot, mincount=None):
+        slot_obj = self._frontier.get(slot)
         for i in range(self._hcf_retries):
             try:
-                return self._hcf.read(self._frontier, slot, mincount)
+                return slot_obj.q.iter(mincount=mincount)
             except requests_lib.exceptions.ReadTimeout:
-                LOG.error("Could not read from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
+                LOG.error("Could not read from {0}/{1} try {2}/{3}".format(self._frontier.key, slot, i+1,
                                                                       self._hcf_retries))
             except requests_lib.exceptions.ConnectionError:
-                LOG.error("Connection error while reading from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
+                LOG.error("Connection error while reading from {0}/{1} try {2}/{3}".format(self._frontier.key, slot, i+1,
                                                                       self._hcf_retries))
             except requests_lib.exceptions.RequestException:
-                LOG.error("Error while reading from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
+                LOG.error("Error while reading from {0}/{1} try {2}/{3}".format(self._frontier.key, slot, i+1,
                                                                       self._hcf_retries))
             time.sleep(60 * (i + 1))
         return []
 
     def delete(self, slot, ids):
+        slot_obj = self._frontier.get(slot)
+
         for i in range(self._hcf_retries):
             try:
-                self._hcf.delete(self._frontier, slot, ids)
+                slot_obj.q.delete(ids)
                 break
             except requests_lib.exceptions.ReadTimeout:
-                LOG.error("Could not delete ids from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
-                                                                            self._hcf_retries))
+                LOG.error("Could not delete ids from {0}/{1} try {2}/{3}".format(
+                    self._frontier.key, slot, i+1, self._hcf_retries))
             except requests_lib.exceptions.ConnectionError:
-                LOG.error("Connection error while deleting ids from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
-                                                                            self._hcf_retries))
+                LOG.error("Connection error while deleting ids from {0}/{1} try {2}/{3}".format(
+                    self._frontier.key, slot, i+1, self._hcf_retries))
             except requests_lib.exceptions.RequestException:
-                LOG.error("Error deleting ids from {0}/{1} try {2}/{3}".format(self._frontier, slot, i+1,
-                                                                            self._hcf_retries))
+                LOG.error("Error deleting ids from {0}/{1} try {2}/{3}".format(
+                    self._frontier.key, slot, i+1, self._hcf_retries))
             time.sleep(60 * (i + 1))
 
     def delete_slot(self, slot):
-        self._hcf.delete_slot(self._frontier, slot)
+        slot_obj = self._frontier.get(slot)
+        slot_obj.delete()
 
     def close(self):
         self._hcf.close()
-        self._hs_client.close()
+        self._client.close()
 
     def get_number_of_links(self, slot=None):
         if slot is None:

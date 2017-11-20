@@ -152,12 +152,30 @@ class HCFBackend(Backend):
         self._init_roles()
         self._log_start_message()
 
+    def _get_producer_newcounts(self):
+        try:
+            newcount = self.producer._hcf.newcount
+        except Exception:
+            pass
+        else:
+            yield None, newcount
+
+        # TODO: add per-slot newcounts in python-scrapinghub & here.
+
+    def _update_producer_new_links_stat(self):
+        for slot, newcount in self._get_producer_newcounts():
+            self.stats.set_value(
+                self._get_producer_stats_msg(slot=slot, msg='new_links'),
+                newcount
+            )
+
     def frontier_stop(self):
         if self.producer:
             n_flushed_links = self.producer.flush()
             if n_flushed_links:
                 LOG.info('Flushing %d link(s) to all slots', n_flushed_links)
             self.producer.close()
+            self._update_producer_new_links_stat()
 
         if self.consumer:
             if not self.hcf_consumer_dont_delete_requests:
@@ -168,10 +186,12 @@ class HCFBackend(Backend):
     def add_seeds(self, seeds):
         for request in seeds:
             self._process_hcf_link(request)
+        self._update_producer_new_links_stat()
 
     def page_crawled(self, response, links):
         for request in links:
             self._process_hcf_link(request)
+        self._update_producer_new_links_stat()
 
     def get_next_requests(self, max_next_requests, **kwargs):
 
@@ -263,8 +283,8 @@ class HCFBackend(Backend):
         if n_flushed_links:
             LOG.info('Flushing %d link(s) to slot %s', n_flushed_links, slot)
 
-        self.stats.inc_value(self._get_producer_stats_msg(slot))
-        self.stats.inc_value(self._get_producer_stats_msg())
+        self.stats.inc_value(self._get_producer_stats_msg(slot, msg='total_links'))
+        self.stats.inc_value(self._get_producer_stats_msg(msg='total_links'))
 
     def _consumer_max_batches_reached(self):
         if not self.hcf_consumer_max_batches:

@@ -64,7 +64,7 @@ class HCFBackend(Backend):
     Backend settings:
     -----------------
 
-    * HCF_AUTH - Hubstorage auth (not required if job run in scrapinghub or configured in scrapy.cfg)
+    * HCF_AUTH - Hubstorage auth (not required if job run in scrapinghub or SH_APIKEY environment variable is set up)
     * HCF_PROJECT_ID - Hubstorage project id (not required if job run in scrapinghub or configured scrapy.cfg)
 
     If is producer:

@@ -85,7 +85,7 @@ class HCFBackend(Backend):
     * HCF_CONSUMER_DONT_DELETE_REQUESTS - If given and True, don't delete requests from frontier once read. For testing purposes.
     * HCF_CONSUMER_DELETE_BATCHES_ON_STOP - If given and True, read batches will be deleted when the job finishes. Default is
         to delete batches once read.
-    * HCF_MAKE_REQUEST(fingerprint, qdata, request_cls) - Custom build of request from the frontier data. It must return None or an
+    * FRONTERA_MAKE_REQUEST(fingerprint, qdata, request_cls) - Custom build of frontera request from the frontier data. It must return None or an
             instance of the class specified in request_cls. If returns None, the request is ignored. Used in consumer spider.
     """
 
@@ -105,7 +105,7 @@ class HCFBackend(Backend):
         'HCF_CONSUMER_MAX_REQUESTS',
         'HCF_CONSUMER_DONT_DELETE_REQUESTS',
         'HCF_CONSUMER_DELETE_BATCHES_ON_STOP',
-        'HCF_MAKE_REQUEST',
+        'FRONTERA_MAKE_REQUEST',
     )
 
     component_name = 'HCF Backend'
@@ -132,7 +132,7 @@ class HCFBackend(Backend):
         self.hcf_consumer_max_requests = DEFAULT_HCF_CONSUMER_MAX_REQUESTS
         self.hcf_consumer_dont_delete_requests = False
         self.hcf_consumer_delete_batches_on_stop = False
-        self.hcf_make_request = self._make_request
+        self.frontera_make_request = self._make_request
 
         self.stats = self.manager.settings.get('STATS_MANAGER')
 
@@ -229,7 +229,7 @@ class HCFBackend(Backend):
                 requests = batch['requests']
                 self.stats.inc_value(self._get_consumer_stats_msg('requests'), len(requests))
                 for fingerprint, qdata in requests:
-                    request = self.hcf_make_request(fingerprint, qdata, self.manager.request_model)
+                    request = self.frontera_make_request(fingerprint, qdata, self.manager.request_model)
                     if request is not None:
                         request.meta.update({
                             b'created_at': datetime.datetime.utcnow(),

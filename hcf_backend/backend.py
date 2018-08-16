@@ -29,8 +29,8 @@ import logging
 
 from frontera import Backend
 
-from hcf_backend.manager import HCFManager
-
+from .manager import HCFManager
+from .utils import convert_from_bytes, convert_to_bytes
 
 __all__ = ['HCFBackend']
 
@@ -214,6 +214,14 @@ class HCFBackend(Backend):
 
         return requests
 
+    @staticmethod
+    def _convert_qdata_to_bytes(qdata):
+        req = qdata['request']
+        req['headers'] = convert_to_bytes(req.get('headers', {}))
+        req['cookies'] = convert_to_bytes(req.get('cookies', {}))
+        for key in list(req.get('meta', {}).keys()):
+            req['meta'][key.encode('utf8')] = req['meta'].pop(key)
+
     def _get_requests_from_hs(self, n_min_requests):
         return_requests = []
         data = True
@@ -229,13 +237,13 @@ class HCFBackend(Backend):
                 requests = batch['requests']
                 self.stats.inc_value(self._get_consumer_stats_msg('requests'), len(requests))
                 for fingerprint, qdata in requests:
+                    self._convert_qdata_to_bytes(qdata)
                     request = self.frontera_make_request(fingerprint, qdata, self.manager.request_model)
                     if request is not None:
                         request.meta.update({
                             b'created_at': datetime.datetime.utcnow(),
                             b'depth': 0,
                         })
-                        request.meta.setdefault(b'scrapy_meta', {})
                         return_requests.append(request)
                         self.n_consumed_requests += 1
                 self.consumed_batches_ids.append(batch_id)
@@ -286,7 +294,7 @@ class HCFBackend(Backend):
         hcf_request['qdata'] = qdata
 
         slot = self.hcf_get_producer_slot(link)
-        n_flushed_links = self.producer.add_request(slot, hcf_request)
+        n_flushed_links = self.producer.add_request(slot, convert_from_bytes(hcf_request))
         if n_flushed_links:
             LOG.info('Flushing %d link(s) to slot %s', n_flushed_links, slot)
 

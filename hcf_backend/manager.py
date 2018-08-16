@@ -5,6 +5,8 @@ from collections import defaultdict
 import requests as requests_lib
 from scrapinghub import ScrapinghubClient
 
+from .utils import convert_from_bytes
+
 
 LOG = logging.getLogger(__name__)
 
@@ -21,7 +23,7 @@ class HCFManager(object):
         self._hcf_retries = 10
 
     def add_request(self, slot, request):
-        self._frontier.get(slot).q.add([request])
+        self._frontier.get(slot).q.add([convert_from_bytes(request)])
         self._links_count[slot] += 1
         self._links_to_flush_count[slot] += 1
         if self._batch_size and self._links_to_flush_count[slot] >= self._batch_size:

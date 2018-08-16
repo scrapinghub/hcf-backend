@@ -149,6 +149,10 @@ class HCFBackend(Backend):
             value = self.manager.settings.get(attr)
             if value is not None:
                 setattr(self, attr.lower(), value)
+        try:
+            int(self.hcf_project_id)
+        except TypeError:
+            raise ValueError("No project id provided. You must set HCF_PROJECT_ID setting.")
         self._init_roles()
         self._log_start_message()
 
@@ -188,9 +192,12 @@ class HCFBackend(Backend):
             self._process_hcf_link(request)
         self._update_producer_new_links_stat()
 
-    def page_crawled(self, response, links):
-        for request in links:
-            self._process_hcf_link(request)
+    def page_crawled(self, response):
+        pass
+
+    def links_extracted(self, request, links):
+        for req in links:
+            self._process_hcf_link(req)
         self._update_producer_new_links_stat()
 
     def get_next_requests(self, max_next_requests, **kwargs):
@@ -225,10 +232,10 @@ class HCFBackend(Backend):
                     request = self.hcf_make_request(fingerprint, qdata, self.manager.request_model)
                     if request is not None:
                         request.meta.update({
-                            'created_at': datetime.datetime.utcnow(),
-                            'depth': 0,
+                            b'created_at': datetime.datetime.utcnow(),
+                            b'depth': 0,
                         })
-                        request.meta.setdefault('scrapy_meta', {})
+                        request.meta.setdefault(b'scrapy_meta', {})
                         return_requests.append(request)
                         self.n_consumed_requests += 1
                 self.consumed_batches_ids.append(batch_id)
@@ -270,7 +277,7 @@ class HCFBackend(Backend):
 
     def _process_hcf_link(self, link):
         assert self.producer, 'HCF request received but backend is not configured as producer'
-        link.meta.pop('origin_is_frontier', None)
+        link.meta.pop(b'origin_is_frontier', None)
         hcf_request = {'fp': getattr(link, 'meta', {}).get('frontier_fingerprint', link.url)}
         qdata = {'request': {}}
         for attr in ('method', 'headers', 'cookies', 'meta'):
@@ -322,7 +329,7 @@ class HCFBackend(Backend):
         This method must return a string value for the slot, and preferably be
         well defined, that is, return the same slot for the same request.
         """
-        fingerprint = request.meta['fingerprint']
+        fingerprint = request.meta[b'fingerprint']
         slotno = str(int(fingerprint, 16) % self.hcf_producer_number_of_slots)
         slot = self._get_producer_slot_name(slotno)
         return slot
@@ -345,4 +352,7 @@ class HCFBackend(Backend):
         return self.hcf_producer_slot_prefix + str(slotno)
 
     def request_error(self, request, error):
+        pass
+
+    def finished(self):
         pass

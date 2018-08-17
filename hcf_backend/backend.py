@@ -85,8 +85,8 @@ class HCFBackend(Backend):
     * HCF_CONSUMER_DONT_DELETE_REQUESTS - If given and True, don't delete requests from frontier once read. For testing purposes.
     * HCF_CONSUMER_DELETE_BATCHES_ON_STOP - If given and True, read batches will be deleted when the job finishes. Default is
         to delete batches once read.
-    * FRONTERA_MAKE_REQUEST(fingerprint, qdata, request_cls) - Custom build of frontera request from the frontier data. It must return None or an
-            instance of the class specified in request_cls. If returns None, the request is ignored. Used in consumer spider.
+    * FRONTERA_MAKE_REQUEST(fingerprint, qdata, request_cls) - Required for consumers. Custom build of frontera request from the frontier data.
+            It must return None or an instance of the class specified in request_cls. If returns None, the request is ignored.
     """
 
     backend_settings = (
@@ -262,8 +262,7 @@ class HCFBackend(Backend):
         self.consumed_batches_ids = []
 
     def _make_request(self, fingerprint, qdata, request_cls):
-        url = qdata.get('url', fingerprint)
-        return request_cls(url, **qdata['request'])
+        raise NotImplementedError("Please setup FRONTERA_MAKE_REQUEST setting.")
 
     def _log_start_message(self):
         producer_message = 'NO'

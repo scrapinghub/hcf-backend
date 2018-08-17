@@ -13,5 +13,5 @@ setup(
         'retrying>=1.3.3',
         'scrapinghub>=2.0.0',
     ),
-    scripts=["bin/hcfpal.py"]
+    scripts=["bin/hcfpal.py", "bin/hcfmanager.py"]
 )

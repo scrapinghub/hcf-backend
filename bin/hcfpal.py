@@ -15,7 +15,7 @@ class HCFPalScript(object):
     def __init__(self):
         parser = argparse.ArgumentParser(description='Helper script for accessing HubCrawlFrontier.')
         parser.add_argument('--apikey',
-                            help='API key to use for HCF access (will use SH_APIKEY variable if not given)')
+                            help='API key to use for HCF access. Uses SH_APIKEY environment variable if not given')
 
         subparsers = parser.add_subparsers(dest='cmd')
         parser_list = subparsers.add_parser('list', help='List project frontiers or slots in a frontier')

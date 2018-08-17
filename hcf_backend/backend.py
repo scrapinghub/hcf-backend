@@ -30,7 +30,13 @@ import logging
 from frontera import Backend
 
 from .manager import HCFManager
-from .utils import convert_from_bytes, convert_to_bytes
+from .utils import (
+    convert_from_bytes,
+    convert_to_bytes,
+    get_hcf_fingerprint,
+    assign_slotno,
+)
+
 
 __all__ = ['HCFBackend']
 
@@ -72,8 +78,6 @@ class HCFBackend(Backend):
     * HCF_PRODUCER_SLOT_PREFIX - Prefix to use for slot names.
     * HCF_PRODUCER_NUMBER_OF_SLOTS - Number of write slots to use.
     * HCF_PRODUCER_BATCH_SIZE - How often slot flush should be called. When a slot reaches the number, it is flushed.
-    * HCF_GET_PRODUCER_SLOT(request) - Custom mapping from a request to a slot name where request must be stored. It receives an instance
-            of the class given by REQUEST_MODEL frontier setting.
 
 
     If is consumer:
@@ -97,7 +101,6 @@ class HCFBackend(Backend):
         'HCF_PRODUCER_SLOT_PREFIX',
         'HCF_PRODUCER_NUMBER_OF_SLOTS',
         'HCF_PRODUCER_BATCH_SIZE',
-        'HCF_GET_PRODUCER_SLOT',
 
         'HCF_CONSUMER_FRONTIER',
         'HCF_CONSUMER_SLOT',
@@ -124,7 +127,6 @@ class HCFBackend(Backend):
         self.hcf_producer_slot_prefix = DEFAULT_HCF_PRODUCER_SLOT_PREFIX
         self.hcf_producer_number_of_slots = DEFAULT_HCF_PRODUCER_NUMBER_OF_SLOTS
         self.hcf_producer_batch_size = DEFAULT_HCF_PRODUCER_BATCH_SIZE
-        self.hcf_get_producer_slot = self._producer_get_slot_callback
 
         self.hcf_consumer_frontier = None
         self.hcf_consumer_slot = DEFAULT_HCF_CONSUMER_SLOT
@@ -208,7 +210,7 @@ class HCFBackend(Backend):
             max_next_requests = min(max_next_requests, self.hcf_consumer_max_requests - self.n_consumed_requests)
 
         if self.consumer and not (self._consumer_max_batches_reached() or self._consumer_max_requests_reached()) \
-                    and max_next_requests:
+                and max_next_requests:
             for request in self._get_requests_from_hs(max_next_requests):
                 requests.append(request)
 
@@ -227,7 +229,7 @@ class HCFBackend(Backend):
         data = True
 
         while data and len(return_requests) < n_min_requests and \
-                    not (self._consumer_max_batches_reached() or self._consumer_max_requests_reached()):
+                not (self._consumer_max_batches_reached() or self._consumer_max_requests_reached()):
             data = False
             for batch in self.consumer.read(self.hcf_consumer_slot, n_min_requests):
                 data = True
@@ -285,7 +287,7 @@ class HCFBackend(Backend):
     def _process_hcf_link(self, link):
         assert self.producer, 'HCF request received but backend is not configured as producer'
         link.meta.pop(b'origin_is_frontier', None)
-        hcf_request = {'fp': getattr(link, 'meta', {}).get('frontier_fingerprint', link.url)}
+        hcf_request = {'fp': get_hcf_fingerprint(link)}
         qdata = {'request': {}}
         for attr in ('method', 'headers', 'cookies', 'meta'):
             qdata['request'][attr] = getattr(link, attr)
@@ -323,22 +325,15 @@ class HCFBackend(Backend):
                                        project_id=self.hcf_project_id,
                                        frontier=self.hcf_consumer_frontier)
 
-    def _producer_get_slot_callback(self, request):
+    def hcf_get_producer_slot(self, request):
         """Determine to which slot should be saved the request.
-
-        This provides a default implementation that distributes urls among the
-        available number of slots based in the URL hash. Will be overriden if
-        HCF_GET_PRODUCER_SLOT setting is provided with a different method
 
         Depending on the urls, this distribution might or not be evenly among
         the slots.
-
-        This method must return a string value for the slot, and preferably be
-        well defined, that is, return the same slot for the same request.
         """
-        fingerprint = request.meta[b'fingerprint']
-        slotno = str(int(fingerprint, 16) % self.hcf_producer_number_of_slots)
-        slot = self._get_producer_slot_name(slotno)
+        fingerprint = get_hcf_fingerprint(request)
+        slotno = assign_slotno(fingerprint, self.hcf_producer_number_of_slots)
+        slot = self.hcf_producer_slot_prefix + str(slotno)
         return slot
 
     def _get_consumer_stats_msg(self, msg=None):
@@ -354,9 +349,6 @@ class HCFBackend(Backend):
         if msg:
             stats_msg += '/%s' % msg
         return stats_msg
-
-    def _get_producer_slot_name(self, slotno):
-        return self.hcf_producer_slot_prefix + str(slotno)
 
     def request_error(self, request, error):
         pass

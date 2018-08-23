@@ -4,11 +4,16 @@ Script for easy managing of consumer spiders from multiple slots. It checks avai
 import re
 import json
 import random
+import logging
 import argparse
 
 from scrapinghub import ScrapinghubClient
 
 from hcf_backend.utils.hcfpal import HCFPal
+
+
+logging.basicConfig(format='%(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class Manager(object):
@@ -42,17 +47,21 @@ class Manager(object):
                 running_jobs += 1
 
         available_slots = [slot for slot in available_slots if self.hcfpal.get_slot_count(self.args.frontier, slot) > 0]
-        random.shuffle(available_slots)
-        if self.args.max_jobs:
-            max_jobs = self.args.max_jobs - running_jobs
-            available_slots = available_slots[:max_jobs]
+        logger.info(f"Available slots: {available_slots!r}")
+        if available_slots:
+            random.shuffle(available_slots)
+            if self.args.max_jobs:
+                max_jobs = self.args.max_jobs - running_jobs
+                available_slots = available_slots[:max_jobs]
+                if not available_slots:
+                    logger.info(f"Already running max number of jobs.")
 
-        for slot in available_slots:
-            frontera_settings_json = json.dumps({
-                'HCF_CONSUMER_SLOT': slot
-            })
-            job = self.project.jobs.run(self.args.spider, job_args={'frontera_settings_json': frontera_settings_json})
-            print(f"Scheduled job {job.key} with frontera settings {frontera_settings_json}")
+            for slot in available_slots:
+                frontera_settings_json = json.dumps({
+                    'HCF_CONSUMER_SLOT': slot
+                })
+                job = self.project.jobs.run(self.args.spider, job_args={'frontera_settings_json': frontera_settings_json})
+                logger.info(f"Scheduled job {job.key} with frontera settings {frontera_settings_json}")
 
 
 if __name__ == '__main__':

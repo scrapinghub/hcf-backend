@@ -27,6 +27,7 @@ class Manager(object):
                             type=int)
         parser.add_argument('--apikey',
                             help='API key to use for HCF access. Uses SH_APIKEY environment variable if not given')
+        parser.add_argument('--spider-args', help='Spider arguments dict in json format', default='{}')
 
         self.args = parser.parse_args()
 
@@ -60,7 +61,9 @@ class Manager(object):
                 frontera_settings_json = json.dumps({
                     'HCF_CONSUMER_SLOT': slot
                 })
-                job = self.project.jobs.run(self.args.spider, job_args={'frontera_settings_json': frontera_settings_json})
+                spider_args = json.loads(self.args.spider_args)
+                spider_args.update({'frontera_settings_json': frontera_settings_json})
+                job = self.project.jobs.run(self.args.spider, job_args=spider_args)
                 logger.info(f"Scheduled job {job.key} with frontera settings {frontera_settings_json}")
 
 

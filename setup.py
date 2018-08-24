@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name         = 'hcf_backend',
-    version      = '0.2.2',
+    version      = '0.2.2.1',
     packages     = find_packages(),
     install_requires=(
         'frontera==0.7.1',

@@ -25,13 +25,13 @@ class HCFSpiderManager(object):
         parser.add_argument('spider', help='Spider name')
         parser.add_argument('frontier', help='Frontier name')
         parser.add_argument('prefix', help='Slot prefix')
-        parser.add_argument('--max-jobs', help='Max number of jobs for the given spider allowed to run in parallel.',
-                            type=int)
+        parser.add_argument('--max-jobs', help='Max number of jobs for the given spider allowed to run in parallel.\
+                            Default is %(default)s.', type=int, default=1)
         parser.add_argument('--apikey',
                             help='API key to use for HCF access. Uses SH_APIKEY environment variable if not given')
         parser.add_argument('--spider-args', help='Spider arguments dict in json format', default='{}')
         parser.add_argument('--loop-mode', help='If provided, manager will run in loop mode, with a cycle each given\
-                            number of seconds.', type=int)
+                            number of seconds.', type=int, metavar='SECONDS')
 
         self.args = parser.parse_args()
 

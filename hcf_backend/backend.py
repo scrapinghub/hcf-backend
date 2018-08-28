@@ -33,7 +33,6 @@ from .manager import HCFManager
 from .utils import (
     convert_from_bytes,
     convert_to_bytes,
-    get_hcf_fingerprint,
     assign_slotno,
 )
 
@@ -89,8 +88,6 @@ class HCFBackend(Backend):
     * HCF_CONSUMER_DONT_DELETE_REQUESTS - If given and True, don't delete requests from frontier once read. For testing purposes.
     * HCF_CONSUMER_DELETE_BATCHES_ON_STOP - If given and True, read batches will be deleted when the job finishes. Default is
         to delete batches once read.
-    * FRONTERA_MAKE_REQUEST(fingerprint, qdata, request_cls) - Required for consumers. Custom build of frontera request from the frontier data.
-            It must return None or an instance of the class specified in request_cls. If returns None, the request is ignored.
     """
 
     backend_settings = (
@@ -108,7 +105,6 @@ class HCFBackend(Backend):
         'HCF_CONSUMER_MAX_REQUESTS',
         'HCF_CONSUMER_DONT_DELETE_REQUESTS',
         'HCF_CONSUMER_DELETE_BATCHES_ON_STOP',
-        'FRONTERA_MAKE_REQUEST',
     )
 
     component_name = 'HCF Backend'
@@ -134,7 +130,6 @@ class HCFBackend(Backend):
         self.hcf_consumer_max_requests = DEFAULT_HCF_CONSUMER_MAX_REQUESTS
         self.hcf_consumer_dont_delete_requests = False
         self.hcf_consumer_delete_batches_on_stop = False
-        self.frontera_make_request = self._make_request
 
         self.stats = self.manager.settings.get('STATS_MANAGER')
 
@@ -240,7 +235,7 @@ class HCFBackend(Backend):
                 self.stats.inc_value(self._get_consumer_stats_msg('requests'), len(requests))
                 for fingerprint, qdata in requests:
                     self._convert_qdata_to_bytes(qdata)
-                    request = self.frontera_make_request(fingerprint, qdata, self.manager.request_model)
+                    request = self._make_request(fingerprint, qdata)
                     if request is not None:
                         request.meta.update({
                             b'created_at': datetime.datetime.utcnow(),
@@ -263,8 +258,11 @@ class HCFBackend(Backend):
             self.consumer.delete(self.hcf_consumer_slot, self.consumed_batches_ids)
         self.consumed_batches_ids = []
 
-    def _make_request(self, fingerprint, qdata, request_cls):
-        raise NotImplementedError("Please setup FRONTERA_MAKE_REQUEST setting.")
+
+    def _make_request(self, fingerprint, qdata):
+        kwargs = qdata['request']
+        kwargs['meta'][b'frontier_fingerprint'] = fingerprint
+        return self.manager.request_model(qdata['url'], **kwargs)
 
     def _log_start_message(self):
         producer_message = 'NO'
@@ -287,7 +285,7 @@ class HCFBackend(Backend):
     def _process_hcf_link(self, link):
         assert self.producer, 'HCF request received but backend is not configured as producer'
         link.meta.pop(b'origin_is_frontier', None)
-        hcf_request = {'fp': get_hcf_fingerprint(link)}
+        hcf_request = {'fp': link.meta[b'frontier_fingerprint']}
         qdata = {'request': {}}
         for attr in ('method', 'headers', 'cookies', 'meta'):
             qdata['request'][attr] = getattr(link, attr)
@@ -331,7 +329,7 @@ class HCFBackend(Backend):
         Depending on the urls, this distribution might or not be evenly among
         the slots.
         """
-        fingerprint = get_hcf_fingerprint(request)
+        fingerprint = request.meta[b'frontier_fingerprint']
         slotno = assign_slotno(fingerprint, self.hcf_producer_number_of_slots)
         slot = self.hcf_producer_slot_prefix + str(slotno)
         return slot

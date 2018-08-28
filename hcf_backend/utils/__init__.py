@@ -26,10 +26,6 @@ def convert_to_bytes(data):
         return data_type(map(convert_to_bytes, data))
 
 
-def get_hcf_fingerprint(request):
-    return request.meta.get(b'frontier_fingerprint', request.url)
-
-
 def hash_mod(text, divisor):
     """
     returns the module of dividing text md5 hash over given divisor

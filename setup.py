@@ -7,11 +7,9 @@ setup(
     version      = '0.2.3.1',
     description  = 'ScrapyCloud HubStorage frontier backend for Frontera',
     long_description = open('README.rst').read(),
-    author_email = 'info@scrapinghub.com',
     license      = 'BSD',
     url          = 'https://github.com/scrapinghub/hcf-backend',
     maintainer   ='Scrapinghub',
-    maintainer_email = 'info@scrapinghub.com',
     packages     = find_packages(),
     install_requires = (
         'frontera==0.7.1',

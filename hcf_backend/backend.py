@@ -140,6 +140,7 @@ class HCFBackend(Backend):
         self.consumer = None
 
         self.consumed_batches_ids = []
+        self._finished = False
 
     def frontier_start(self):
         for attr in self.backend_settings:
@@ -251,6 +252,7 @@ class HCFBackend(Backend):
             if not self.hcf_consumer_dont_delete_requests and not self.hcf_consumer_delete_batches_on_stop:
                 self.delete_read_batches()
 
+        self._finished = not data
         return return_requests
 
     def delete_read_batches(self):
@@ -352,4 +354,4 @@ class HCFBackend(Backend):
         pass
 
     def finished(self):
-        pass
+        return self._finished

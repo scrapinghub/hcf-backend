@@ -2,26 +2,69 @@
 HCF Backend for Frontera Scheduler
 
 Optimizing frontier setting configuration:
+------------------------------------------
 
-BACKEND = 'hcf_backend.HCFBackend'
+If you want to limit each consumer job, use one of the
+following parameters. One limits by read requests count,
+the other by read batches count. In HCF each batch contains
+no more than 100 requests.
+HCF_CONSUMER_MAX_REQUESTS = 15000
+HCF_CONSUMER_MAX_BATCHES = 150
 
-# If you want to limit each consumer job, use one of the
-# following parameters. One limits by read requests count,
-# the other by read batches count. In HCF each batch contains
-# no more than 100 requests.
-# HCF_CONSUMER_MAX_REQUESTS = 15000
-# HCF_CONSUMER_MAX_BATCHES = 150
-
-# How many requests are read on each call to HCF. If 0, limit
-# is determined by the speed at which scrapy demands requests, which
-# is very unnefficient because it makes lots of calls to HCF which retrieves
-# a small number of requests. Same if you give it a small value. A too big value
-# will make to retrieve a total of requests/batches bigger than setted
-# in HCF_CONSUMER_MAX_* settings. Can also make to fail requests to HCF
-# by timeout. A value of 1000 is optimal for most purposes.
+How many requests are read on each call to HCF. If 0, limit
+is determined by the speed at which scrapy demands requests, which
+is very unnefficient because it makes lots of calls to HCF which retrieves
+a small number of requests. Same if you give it a small value. A too big value
+will make to retrieve a total of requests/batches bigger than setted
+in HCF_CONSUMER_MAX_* settings. Can also make to fail requests to HCF
+by timeout. A value of 1000 is optimal for most purposes.
 MAX_NEXT_REQUESTS = 1000
 
-Read class docstring below for details on other configuration settings.
+Another important setting that affects performance is HCF_PRODUCER_BATCH_SIZE. This is the number
+of requests accumulated per slot before syncing to the frontier. Hence, this setting affects
+the memory needed for the producer. The default of 1000 is good enough for most purposes. But if
+you still have memory issues, specially when using many slots, you may want to decrease it.
+
+Usage details
+-------------
+
+In order to enable, follow instructions on how to enable crawl frontier scheduler on frontera doc, and set
+frontier BACKEND setting to hcf_backend.HCFBackend. Simple example::
+
+in mycrawler/settings.py::
+
+SCHEDULER = 'frontera.contrib.scrapy.schedulers.frontier.FronteraScheduler'
+FRONTERA_SETTINGS = 'mycrawler.frontera_settings'
+
+in mycrawler/frontier_settings.py::
+
+BACKEND = 'hcf_backend.HCFBackend'
+HCF_CONSUMER_MAX_BATCHES = 500
+MAX_NEXT_REQUESTS = 1000
+
+Backend settings:
+-----------------
+
+* HCF_AUTH - Hubstorage auth (not required if job run in scrapinghub or SH_APIKEY environment variable is set up)
+* HCF_PROJECT_ID - Hubstorage project id (not required if job run in scrapinghub or configured scrapy.cfg)
+
+If is producer:
+* HCF_PRODUCER_FRONTIER - The frontier where URLs are written.
+* HCF_PRODUCER_SLOT_PREFIX - Prefix to use for slot names.
+* HCF_PRODUCER_NUMBER_OF_SLOTS - Number of write slots to use.
+* HCF_PRODUCER_BATCH_SIZE - How often slot flush should be called. When a slot reaches the number, it is flushed.
+
+
+If is consumer:
+* HCF_CONSUMER_FRONTIER - The frontier where URLs are readed.
+* HCF_CONSUMER_SLOT - Slot from where the spider will read new URLs.
+* HCF_CONSUMER_MAX_BATCHES - Max batches to read from hubstorage.
+* HCF_CONSUMER_MAX_REQUESTS - Max request to be read from hubstorage.
+    (note: crawler stops to read from hcf when any of max batches or max requests limit are reached)
+* HCF_CONSUMER_DONT_DELETE_REQUESTS - If given and True, don't delete requests from frontier once read. For testing purposes.
+* HCF_CONSUMER_DELETE_BATCHES_ON_STOP - If given and True, read batches will be deleted when the job finishes. Default is
+    to delete batches once read.
+
 """
 
 import datetime
@@ -44,51 +87,13 @@ LOG = logging.getLogger(__name__)
 
 DEFAULT_HCF_PRODUCER_NUMBER_OF_SLOTS = 8
 DEFAULT_HCF_PRODUCER_SLOT_PREFIX = ''
-DEFAULT_HCF_PRODUCER_BATCH_SIZE = 10000
+DEFAULT_HCF_PRODUCER_BATCH_SIZE = 1000
 DEFAULT_HCF_CONSUMER_SLOT = 0
 DEFAULT_HCF_CONSUMER_MAX_BATCHES = 0
 DEFAULT_HCF_CONSUMER_MAX_REQUESTS = 0
 
 
 class HCFBackend(Backend):
-    """
-    In order to enable, follow instructions on how to enable crawl frontier scheduler on frontera doc, and set
-    frontier BACKEND setting to hcf_backend.HCFBackend. Simple example::
-
-    in mycrawler/settings.py::
-
-    SCHEDULER = 'frontera.contrib.scrapy.schedulers.frontier.FronteraScheduler'
-    FRONTERA_SETTINGS = 'mycrawler.frontera_settings'
-
-    in mycrawler/frontier_settings.py::
-
-    BACKEND = 'hcf_backend.HCFBackend'
-    HCF_CONSUMER_MAX_BATCHES = 500
-    MAX_NEXT_REQUESTS = 1000
-
-    Backend settings:
-    -----------------
-
-    * HCF_AUTH - Hubstorage auth (not required if job run in scrapinghub or SH_APIKEY environment variable is set up)
-    * HCF_PROJECT_ID - Hubstorage project id (not required if job run in scrapinghub or configured scrapy.cfg)
-
-    If is producer:
-    * HCF_PRODUCER_FRONTIER - The frontier where URLs are written.
-    * HCF_PRODUCER_SLOT_PREFIX - Prefix to use for slot names.
-    * HCF_PRODUCER_NUMBER_OF_SLOTS - Number of write slots to use.
-    * HCF_PRODUCER_BATCH_SIZE - How often slot flush should be called. When a slot reaches the number, it is flushed.
-
-
-    If is consumer:
-    * HCF_CONSUMER_FRONTIER - The frontier where URLs are readed.
-    * HCF_CONSUMER_SLOT - Slot from where the spider will read new URLs.
-    * HCF_CONSUMER_MAX_BATCHES - Max batches to read from hubstorage.
-    * HCF_CONSUMER_MAX_REQUESTS - Max request to be read from hubstorage.
-        (note: crawler stops to read from hcf when any of max batches or max requests limit are reached)
-    * HCF_CONSUMER_DONT_DELETE_REQUESTS - If given and True, don't delete requests from frontier once read. For testing purposes.
-    * HCF_CONSUMER_DELETE_BATCHES_ON_STOP - If given and True, read batches will be deleted when the job finishes. Default is
-        to delete batches once read.
-    """
 
     backend_settings = (
         'HCF_AUTH',

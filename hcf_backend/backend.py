@@ -77,6 +77,7 @@ from .utils import (
     convert_from_bytes,
     convert_to_bytes,
     assign_slotno,
+    get_project_id
 )
 
 
@@ -122,7 +123,7 @@ class HCFBackend(Backend):
         self.manager = manager
 
         self.hcf_auth = None
-        self.hcf_project_id = None
+        self.hcf_project_id = get_project_id()
 
         self.hcf_producer_frontier = None
         self.hcf_producer_slot_prefix = DEFAULT_HCF_PRODUCER_SLOT_PREFIX

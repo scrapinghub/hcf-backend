@@ -77,7 +77,8 @@ from .utils import (
     convert_from_bytes,
     convert_to_bytes,
     assign_slotno,
-    get_project_id
+    get_project_id,
+    get_apikey
 )
 
 
@@ -122,7 +123,7 @@ class HCFBackend(Backend):
     def __init__(self, manager):
         self.manager = manager
 
-        self.hcf_auth = None
+        self.hcf_auth = get_apikey()
         self.hcf_project_id = get_project_id()
 
         self.hcf_producer_frontier = None

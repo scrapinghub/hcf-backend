@@ -2,6 +2,8 @@ import os
 import hashlib
 import six
 
+from scrapinghub.client import parse_auth
+
 
 def convert_from_bytes(data):
     if data is not None:
@@ -51,3 +53,11 @@ def get_project_id():
         return os.environ['SHUB_JOBKEY'].split('/')[0]
     except KeyError:
         pass
+
+
+def get_apikey():
+    """Provides a facade to the multiple behaviors of parse_auth() and forces
+    it to read the 'SH_APIKEY' env var and return it.
+    """
+
+    return parse_auth(None)[0]

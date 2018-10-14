@@ -1,3 +1,4 @@
+import os
 import hashlib
 import six
 
@@ -43,3 +44,10 @@ def assign_slotno(path, numslots):
     Standard way to assign slot number from url path
     """
     return str(hash_mod(path, numslots))
+
+
+def get_project_id():
+    try:
+        return os.environ['SHUB_JOBKEY'].split('/')[0]
+    except KeyError:
+        pass

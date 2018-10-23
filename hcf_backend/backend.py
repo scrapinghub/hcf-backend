@@ -45,7 +45,7 @@ MAX_NEXT_REQUESTS = 1000
 Backend settings:
 -----------------
 
-* HCF_AUTH - Hubstorage auth (not required if job run in scrapinghub ScrapyCloud or SH_APIKEY environment variable is set up)
+* HCF_AUTH - Hubstorage auth (not required if SH_APIKEY environment variable is set up)
 * HCF_PROJECT_ID - Hubstorage project id (not required if job run in scrapinghub ScrapyCloud)
 
 If is producer:

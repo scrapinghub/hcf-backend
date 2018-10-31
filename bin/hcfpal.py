@@ -6,7 +6,7 @@ from itertools import cycle
 import humanize
 from scrapinghub import ScrapinghubClient
 
-from hcf_backend.utils import assign_slotno
+from hcf_backend.utils import assign_slotno, get_project_id
 from hcf_backend.utils.hcfpal import HCFPal
 
 
@@ -19,37 +19,37 @@ class HCFPalScript(object):
 
         subparsers = parser.add_subparsers(dest='cmd')
         parser_list = subparsers.add_parser('list', help='List project frontiers or slots in a frontier')
-        parser_list.add_argument('pid', type=int, help='Project ID')
         parser_list.add_argument('frontier', nargs='?', help='Define frontier to list it\'s slots')
+        parser_list.add_argument('--project-id', type=int, help='Project ID', default=get_project_id())
         parser_list.add_argument('--all', action='store_true', help='List all frontiers and their slots')
 
         parser_count = subparsers.add_parser('count', help='Count requests in frontier slots')
-        parser_count.add_argument('pid', type=int, help='Project ID')
         parser_count.add_argument('frontier', help='Frontier for which to count')
+        parser_count.add_argument('--project-id', type=int, help='Project ID', default=get_project_id())
         parser_count.add_argument('--prefix', help='Count only slots with a given prefix', default='')
         parser_count.add_argument('--regex', help='Count only slots that matches given regex', default='')
         parser_count.add_argument('--num-slots', type=int, help="Specify number of slots instead of autodetect \
                                                                  (much faster in most cases)")
 
         parser_delete = subparsers.add_parser('delete', help='Delete slots from frontier')
-        parser_delete.add_argument('pid', type=int, help='Project ID')
         parser_delete.add_argument('frontier', help='Frontier to delete slots from')
+        parser_delete.add_argument('--project-id', type=int, help='Project ID', default=get_project_id())
         parser_delete.add_argument('--prefix', help='Delete only slots with a given prefix')
 
         parser_dump = subparsers.add_parser('dump', help='Dump next requests in queue of a frontier slot')
-        parser_dump.add_argument('pid', type=int, help='Project ID')
         parser_dump.add_argument('frontier', help='Frontier name from where to dump')
         parser_dump.add_argument('slot', help='Slot from where to dump')
+        parser_dump.add_argument('--project-id', type=int, help='Project ID', default=get_project_id())
         parser_dump.add_argument('--num-requests', help='Number of requests to dump. Defaults to %(default)d.',
                                  type=int, default=100)
 
         parser_move = subparsers.add_parser('move', help='Move requests from slots of given prefix, into the given \
                                                           number of slots on another prefix.')
-        parser_move.add_argument('pid', type=int, help='Project ID')
         parser_move.add_argument('frontier', help='Frontier name')
         parser_move.add_argument('prefix', help='Prefix name of the source slots')
         parser_move.add_argument('dest_prefix', help='Prefix name of the destination slots')
         parser_move.add_argument('dest_num_slots', help='Number of destination slots', type=int)
+        parser_move.add_argument('--project-id', type=int, help='Project ID', default=get_project_id())
         parser_move.add_argument('--num-slots', type=int, help='If given, source slots are computed using given prefix \
                                                                 and this number instead of list api (sometimes list \
                                                                 api works very slow)')
@@ -59,11 +59,11 @@ class HCFPalScript(object):
 
         parser_move_batch = subparsers.add_parser('move_batch',
                                                   help='Move requests from given batch id into a new slot.')
-        parser_move_batch.add_argument('pid', type=int, help='Project ID')
         parser_move_batch.add_argument('frontier', help='Frontier name')
         parser_move_batch.add_argument('source_slot', help='Source slot where to find the batch id')
         parser_move_batch.add_argument('batchid', help='Id of the target batch')
         parser_move_batch.add_argument('dest_slot', help='Destination slot')
+        parser_move_batch.add_argument('--project-id', type=int, help='Project ID', default=get_project_id())
         parser_move_batch.add_argument('--max-scan-batches', default=100, type=int,
                                        help='Max number of batches to scan in order to find target batch id in the \
                                              source slot')
@@ -72,7 +72,7 @@ class HCFPalScript(object):
 
         client = ScrapinghubClient(self.args.apikey)
         hsc = client._hsclient
-        self.hsp = hsc.get_project(self.args.pid)
+        self.hsp = hsc.get_project(self.args.project_id)
         self.hcf = HCFPal(self.hsp)
 
     def run(self):
@@ -93,21 +93,21 @@ class HCFPalScript(object):
     def delete_slots(self):
         prefix_note = ' (with prefix "{}")'.format(self.args.prefix) if self.args.prefix else ''
         print('Deleting slots{} from frontier "{}", project {}...'.format(
-            prefix_note, self.args.frontier, self.args.pid))
+            prefix_note, self.args.frontier, self.args.project_id))
         slots = [slot for slot in self.hcf.get_slots(self.args.frontier) if slot.startswith(self.args.prefix)]
         self.hcf.delete_slots(self.args.frontier, slots)
         print('Slots deleted: {}'.format(slots))
 
     def list_hcf(self):
         if self.args.all:
-            print('Listing all frontiers and their slots in project {}:'.format(self.args.pid))
+            print('Listing all frontiers and their slots in project {}:'.format(self.args.project_id))
             print(self.hcf.list_all(prettyprint=True))
         elif self.args.frontier:
-            print('Listing slots for frontier "{}" in project {}:'.format(self.args.frontier, self.args.pid))
+            print('Listing slots for frontier "{}" in project {}:'.format(self.args.frontier, self.args.project_id))
             for slot in self.hcf.get_slots(self.args.frontier):
                 print('\t{}'.format(slot))
         else:
-            print('Listing frontiers in project {}:'.format(self.args.pid))
+            print('Listing frontiers in project {}:'.format(self.args.project_id))
             for front in self.hcf.get_frontiers():
                 print('\t{}'.format(front))
 
@@ -118,7 +118,7 @@ class HCFPalScript(object):
         elif self.args.regex:
             note = ' (with regex "{}")'.format(self.args.regex)
         print('Counting requests in slots{} for frontier "{}", project {}:'.format(
-            note, self.args.frontier, self.args.pid))
+            note, self.args.frontier, self.args.project_id))
         total = 0
         not_empty_slots = 0
         slots = ['{}{}'.format(self.args.prefix, slot) for slot in range(self.args.num_slots)] if \
@@ -140,7 +140,7 @@ class HCFPalScript(object):
 
     def dump_slot(self):
         print('Dumping next {} requests from slot {}, frontier {}, pid {}:'.format(
-            self.args.num_requests, self.args.slot, self.args.frontier, self.args.pid))
+            self.args.num_requests, self.args.slot, self.args.frontier, self.args.project_id))
         count = 0
         for batch in self.hsp.frontier.read(self.args.frontier, self.args.slot, self.args.num_requests):
             print("Batch id:", batch['id'])
@@ -152,7 +152,8 @@ class HCFPalScript(object):
 
     def move_slots(self):
         print("Moving requests from frontier {}, pid {}, prefix {} into {} slots of prefix {}".format(
-            self.args.frontier, self.args.pid, self.args.prefix, self.args.dest_num_slots, self.args.dest_prefix))
+            self.args.frontier, self.args.project_id, self.args.prefix, self.args.dest_num_slots,
+            self.args.dest_prefix))
         if self.args.num_slots:
             source_slots = [self.args.prefix + str(slotno) for slotno in range(self.args.num_slots)]
         else:
@@ -184,7 +185,7 @@ class HCFPalScript(object):
 
     def move_batch(self):
         print("Moving requests from frontier {}, pid {}, slot {}, batch {} to slot {}".format(
-            self.args.frontier, self.args.pid, self.args.source_slot, self.args.batchid, self.args.dest_slot))
+            self.args.frontier, self.args.project_id, self.args.source_slot, self.args.batchid, self.args.dest_slot))
         for batch in self.hsp.frontier.read(self.args.frontier, self.args.source_slot, self.args.max_scan_batches):
             if batch['id'] == self.args.batchid:
                 frequests = []

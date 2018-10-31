@@ -12,6 +12,7 @@ import argparse
 from scrapinghub import ScrapinghubClient
 
 from hcf_backend.utils.hcfpal import HCFPal
+from hcf_backend.utils import get_project_id
 
 
 logging.basicConfig(format='%(message)s', level=logging.INFO)
@@ -21,12 +22,12 @@ logger = logging.getLogger(__name__)
 class HCFSpiderManager(object):
     def __init__(self):
         parser = argparse.ArgumentParser(description=__doc__)
-        parser.add_argument('pid', help='Taget project id')
         parser.add_argument('spider', help='Spider name')
         parser.add_argument('frontier', help='Frontier name')
         parser.add_argument('prefix', help='Slot prefix')
         parser.add_argument('--max-jobs', help='Max number of jobs for the given spider allowed to run in parallel.\
                             Default is %(default)s.', type=int, default=1)
+        parser.add_argument('--project-id', help='Target project id', default=get_project_id())
         parser.add_argument('--apikey',
                             help='API key to use for HCF access. Uses SH_APIKEY environment variable if not given')
         parser.add_argument('--spider-args', help='Spider arguments dict in json format', default='{}')
@@ -36,8 +37,8 @@ class HCFSpiderManager(object):
         self.args = parser.parse_args()
 
         client = ScrapinghubClient(self.args.apikey)
-        self.project = client.get_project(self.args.pid)
-        self.hcfpal = HCFPal(client._hsclient.get_project(self.args.pid))
+        self.project = client.get_project(self.args.project_id)
+        self.hcfpal = HCFPal(client._hsclient.get_project(self.args.project_id))
 
     def run(self):
         if self.args.loop_mode:

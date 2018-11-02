@@ -1,4 +1,4 @@
 from .backend import *
 
 
-__version = '0.2.4.1'
+__version__ = '0.2.5'

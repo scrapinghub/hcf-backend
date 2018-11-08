@@ -60,4 +60,7 @@ def get_apikey():
     it to read the 'SH_APIKEY' env var and return it.
     """
 
-    return parse_auth(None)[0]
+    try:
+        return parse_auth(None)[0]
+    except RuntimeError:
+        pass

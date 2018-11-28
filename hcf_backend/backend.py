@@ -265,6 +265,7 @@ class HCFBackend(Backend):
     def delete_read_batches(self):
         if self.consumed_batches_ids:
             self.consumer.delete(self.hcf_consumer_slot, self.consumed_batches_ids)
+            LOG.info('Deleting read batches: %s', self.consumed_batches_ids)
         self.consumed_batches_ids = []
 
 

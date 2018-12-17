@@ -10,7 +10,7 @@ def convert_from_bytes(data):
         data_type = type(data)
         if data_type == bytes:
             return data.decode('utf8')
-        if data_type in (str, int, bool):
+        if data_type in (str, int, float, bool):
             return data
         if data_type == dict:
             data = data.items()
@@ -22,7 +22,7 @@ def convert_to_bytes(data):
         data_type = type(data)
         if data_type == str:
             return data.encode('utf8')
-        if data_type in (bytes, int, bool):
+        if data_type in (bytes, int, float, bool):
             return data
         if data_type == dict:
             data = data.items()

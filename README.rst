@@ -11,3 +11,8 @@ Package also installs a convenient command line tool for hubstorage frontier han
 
 Another tool provided is `hcfmanager.py <https://github.com/scrapinghub/hcf-backend/blob/master/bin/hcfmanager.py>`_. It facilitates the scheduling of
 consumer spider jobs.
+
+Installation
+============
+
+pip install hcf-backend

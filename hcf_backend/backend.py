@@ -157,9 +157,10 @@ class HCFBackend(Backend):
         try:
             int(self.hcf_project_id)
         except TypeError:
-            raise ValueError("No project id provided. You must set HCF_PROJECT_ID setting.")
-        self._init_roles()
-        self._log_start_message()
+            LOG.warning("Could not detect project. You must set HCF_PROJECT_ID setting. HCFBackend is not configured.")
+        else:
+            self._init_roles()
+            self._log_start_message()
 
     def _get_producer_newcounts(self):
         try:
@@ -293,7 +294,9 @@ class HCFBackend(Backend):
         LOG.info('HCF consumer: %s', consumer_message)
 
     def _process_hcf_link(self, link):
-        assert self.producer, 'HCF request received but backend is not configured as producer'
+        if not self.producer:
+            LOG.debug(f'Ignoring {link.url}: backend not configured as producer')
+            return
         link.meta.pop(b'origin_is_frontier', None)
         hcf_request = {'fp': link.meta[b'frontier_fingerprint']}
         qdata = {'request': {}}

@@ -61,9 +61,10 @@ If is consumer:
 * HCF_CONSUMER_MAX_BATCHES - Max batches to read from hubstorage.
 * HCF_CONSUMER_MAX_REQUESTS - Max request to be read from hubstorage.
     (note: crawler stops to read from hcf when any of max batches or max requests limit are reached)
-* HCF_CONSUMER_DONT_DELETE_REQUESTS - If given and True, don't delete requests from frontier once read. For testing purposes.
-* HCF_CONSUMER_DELETE_BATCHES_ON_STOP - If given and True, read batches will be deleted when the job finishes. Default is
-    to delete batches once read.
+* HCF_CONSUMER_DONT_DELETE_REQUESTS - If given and True, don't delete requests from frontier once read.
+  For testing purposes or delegation of batch control.
+* HCF_CONSUMER_DELETE_BATCHES_ON_STOP - If given and True, read batches will be deleted when the job finishes.
+    Default is to delete batches once read.
 
 """
 
@@ -90,7 +91,7 @@ LOG = logging.getLogger(__name__)
 DEFAULT_HCF_PRODUCER_NUMBER_OF_SLOTS = 1
 DEFAULT_HCF_PRODUCER_SLOT_PREFIX = ''
 DEFAULT_HCF_PRODUCER_BATCH_SIZE = 1000
-DEFAULT_HCF_CONSUMER_SLOT = '0'
+DEFAULT_HCF_CONSUMER_SLOT = ''
 DEFAULT_HCF_CONSUMER_MAX_BATCHES = 0
 DEFAULT_HCF_CONSUMER_MAX_REQUESTS = 0
 
@@ -269,7 +270,6 @@ class HCFBackend(Backend):
             LOG.info('Deleting read batches: %s', self.consumed_batches_ids)
         self.consumed_batches_ids = []
 
-
     def _make_request(self, fingerprint, qdata):
         kwargs = qdata['request']
         kwargs['meta'][b'frontier_fingerprint'] = fingerprint
@@ -306,12 +306,13 @@ class HCFBackend(Backend):
         hcf_request['qdata'] = qdata
 
         slot = self.hcf_get_producer_slot(link)
-        n_flushed_links = self.producer.add_request(slot, convert_from_bytes(hcf_request))
-        if n_flushed_links:
-            LOG.info('Flushing %d link(s) to slot %s', n_flushed_links, slot)
+        if slot:
+            n_flushed_links = self.producer.add_request(slot, convert_from_bytes(hcf_request))
+            if n_flushed_links:
+                LOG.info('Flushing %d link(s) to slot %s', n_flushed_links, slot)
 
-        self.stats.inc_value(self._get_producer_stats_msg(slot, msg='total_links'))
-        self.stats.inc_value(self._get_producer_stats_msg(msg='total_links'))
+            self.stats.inc_value(self._get_producer_stats_msg(slot, msg='total_links'))
+            self.stats.inc_value(self._get_producer_stats_msg(msg='total_links'))
 
     def _consumer_max_batches_reached(self):
         if not self.hcf_consumer_max_batches:
@@ -331,7 +332,7 @@ class HCFBackend(Backend):
                                        frontier=self.hcf_producer_frontier,
                                        batch_size=self.hcf_producer_batch_size)
 
-        if self.hcf_consumer_frontier:
+        if self.hcf_consumer_frontier and self.hcf_consumer_slot:
             self.consumer = HCFManager(auth=self.hcf_auth,
                                        project_id=self.hcf_project_id,
                                        frontier=self.hcf_consumer_frontier)
@@ -342,10 +343,13 @@ class HCFBackend(Backend):
         Depending on the urls, this distribution might or not be evenly among
         the slots.
         """
-        fingerprint = request.meta[b'frontier_fingerprint']
-        slotno = assign_slotno(fingerprint, self.hcf_producer_number_of_slots)
-        slot = self.hcf_producer_slot_prefix + str(slotno)
-        return slot
+        if self.hcf_producer_slot_prefix:
+            fingerprint = request.meta[b'frontier_fingerprint']
+            slotno = assign_slotno(fingerprint, self.hcf_producer_number_of_slots)
+            slot = self.hcf_producer_slot_prefix + str(slotno)
+            return slot
+        else:
+            LOG.debug(f'Ignoring {request.url}: No hcf producer slot prefix provided.')
 
     def _get_consumer_stats_msg(self, msg=None):
         stats_msg = 'hcf/consumer/%s/%s' % (self.hcf_consumer_frontier, self.hcf_consumer_slot)

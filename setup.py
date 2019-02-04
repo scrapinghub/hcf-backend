@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name         = 'hcf-backend',
-    version      = '0.3',
+    version      = '0.3.1',
     description  = 'ScrapyCloud HubStorage frontier backend for Frontera',
     long_description = open('README.rst').read(),
     license      = 'BSD',
@@ -17,7 +17,7 @@ setup(
         'requests>=2.18.4',
         'retrying>=1.3.3',
         'scrapinghub>=2.0.0',
-        'shub-workflow>=1.5',
+        'shub-workflow>=1.5.1',
     ),
     classifiers = [
         'Development Status :: 5 - Production/Stable',

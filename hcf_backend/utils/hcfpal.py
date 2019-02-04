@@ -83,6 +83,7 @@ class HCFPal(object):
         return total
 
 
+# TODO: move code from this script to HCFPal class, leaving here only command line support
 class HCFPalScript(object):
 
     def __init__(self):

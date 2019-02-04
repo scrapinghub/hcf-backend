@@ -16,7 +16,7 @@ logging.basicConfig(format='%(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class HCFSpiderManager(CrawlManager):
+class HCFCrawlManager(CrawlManager):
 
     default_max_jobs = 1
 

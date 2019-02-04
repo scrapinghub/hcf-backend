@@ -9,7 +9,7 @@ See usage instructions at module and class docstrings at `backend.py <https://gi
 Package also installs a convenient command line tool for hubstorage frontier handling and manipulation:
 `hcfpal.py <https://github.com/scrapinghub/hcf-backend/blob/master/bin/hcfpal.py>`_. It supports dumping, count, deletion, moving, listing, etc.
 
-Another tool provided is `hcfmanager.py <https://github.com/scrapinghub/hcf-backend/blob/master/bin/hcfmanager.py>`_. It facilitates the scheduling of
+Another tool provided is `hcfcrawlmanager.py <https://github.com/scrapinghub/hcf-backend/blob/master/bin/hcfcrawlmanager.py>`_. It facilitates the scheduling of
 consumer spider jobs.
 
 Installation

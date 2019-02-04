@@ -8,9 +8,9 @@ import requests
 from requests.auth import HTTPBasicAuth
 from requests.exceptions import HTTPError, ConnectionError
 from retrying import retry
-from scrapinghub import ScrapinghubClient
+from shub_workflow.script import BaseScript
 
-from .utils import assign_slotno, get_project_id
+from hcf_backend.utils import assign_slotno
 
 
 def retry_if_http_error(e):
@@ -21,7 +21,7 @@ def retry_if_http_error(e):
     return False
 
 
-class HCFPal(object):
+class HCFPal:
 
     HCF_API_URLS = {
         'count': 'https://storage.scrapinghub.com/hcf/{pid}/{frontier}/s/{slot}/q/count',
@@ -84,22 +84,29 @@ class HCFPal(object):
 
 
 # TODO: move code from this script to HCFPal class, leaving here only command line support
-class HCFPalScript(object):
+class HCFPalScript(BaseScript):
+
+    flow_id_required = False
 
     def __init__(self):
-        parser = argparse.ArgumentParser(description='Helper script for accessing HubCrawlFrontier.')
-        parser.add_argument('--apikey',
-                            help='API key to use for HCF access. Uses SH_APIKEY environment variable if not given')
+        super().__init__()
+        hsc = self.client._hsclient
+        self.hsp = hsc.get_project(self.args.project_id)
+        self.hcf = HCFPal(self.hsp)
 
-        subparsers = parser.add_subparsers(dest='cmd')
+    @property
+    def description(self):
+        return 'Helper script for accessing HubCrawlFrontier.'
+
+    def add_argparser_options(self):
+        super().add_argparser_options()
+        subparsers = self.argparser.add_subparsers(dest='cmd')
         parser_list = subparsers.add_parser('list', help='List project frontiers or slots in a frontier')
         parser_list.add_argument('frontier', nargs='?', help='Define frontier to list it\'s slots')
-        parser_list.add_argument('--project-id', type=int, help='Project ID', default=get_project_id())
         parser_list.add_argument('--all', action='store_true', help='List all frontiers and their slots')
 
         parser_count = subparsers.add_parser('count', help='Count requests in frontier slots')
         parser_count.add_argument('frontier', help='Frontier for which to count')
-        parser_count.add_argument('--project-id', type=int, help='Project ID', default=get_project_id())
         parser_count.add_argument('--prefix', help='Count only slots with a given prefix', default='')
         parser_count.add_argument('--regex', help='Count only slots that matches given regex', default='')
         parser_count.add_argument('--num-slots', type=int, help="Specify number of slots instead of autodetect \
@@ -107,13 +114,11 @@ class HCFPalScript(object):
 
         parser_delete = subparsers.add_parser('delete', help='Delete slots from frontier')
         parser_delete.add_argument('frontier', help='Frontier to delete slots from')
-        parser_delete.add_argument('--project-id', type=int, help='Project ID', default=get_project_id())
         parser_delete.add_argument('--prefix', help='Delete only slots with a given prefix')
 
         parser_dump = subparsers.add_parser('dump', help='Dump next requests in queue of a frontier slot')
         parser_dump.add_argument('frontier', help='Frontier name from where to dump')
         parser_dump.add_argument('slot', help='Slot from where to dump')
-        parser_dump.add_argument('--project-id', type=int, help='Project ID', default=get_project_id())
         parser_dump.add_argument('--num-requests', help='Number of requests to dump. Defaults to %(default)d.',
                                  type=int, default=100)
 
@@ -123,7 +128,6 @@ class HCFPalScript(object):
         parser_move.add_argument('prefix', help='Prefix name of the source slots')
         parser_move.add_argument('dest_prefix', help='Prefix name of the destination slots')
         parser_move.add_argument('dest_num_slots', help='Number of destination slots', type=int)
-        parser_move.add_argument('--project-id', type=int, help='Project ID', default=get_project_id())
         parser_move.add_argument('--num-slots', type=int, help='If given, source slots are computed using given prefix \
                                                                 and this number instead of list api (sometimes list \
                                                                 api works very slow)')
@@ -137,20 +141,12 @@ class HCFPalScript(object):
         parser_move_batch.add_argument('source_slot', help='Source slot where to find the batch id')
         parser_move_batch.add_argument('batchid', help='Id of the target batch')
         parser_move_batch.add_argument('dest_slot', help='Destination slot')
-        parser_move_batch.add_argument('--project-id', type=int, help='Project ID', default=get_project_id())
         parser_move_batch.add_argument('--max-scan-batches', default=100, type=int,
                                        help='Max number of batches to scan in order to find target batch id in the \
                                              source slot')
 
-        self.args = parser.parse_args()
-
-        client = ScrapinghubClient(self.args.apikey)
-        hsc = client._hsclient
-        self.hsp = hsc.get_project(self.args.project_id)
-        self.hcf = HCFPal(self.hsp)
 
     def run(self):
-
         if self.args.cmd == 'list':
             self.list_hcf()
         elif self.args.cmd == 'count':

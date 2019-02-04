@@ -17,7 +17,7 @@ setup(
         'requests>=2.18.4',
         'retrying>=1.3.3',
         'scrapinghub>=2.0.0',
-        'shub-workflow',
+        'shub-workflow>=1.5',
     ),
     classifiers = [
         'Development Status :: 5 - Production/Stable',

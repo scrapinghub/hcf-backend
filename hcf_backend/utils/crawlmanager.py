@@ -63,3 +63,8 @@ class HCFCrawlManager(CrawlManager):
                 logger.info(f"Scheduled job {jobkey} with frontera settings {frontera_settings_json}")
             return True
         return bool(running_jobs)
+
+
+if __name__ == '__main__':
+    manager = HCFCrawlManager()
+    manager.run()

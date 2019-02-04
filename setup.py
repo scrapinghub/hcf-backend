@@ -19,7 +19,6 @@ setup(
         'scrapinghub>=2.0.0',
         'shub-workflow',
     ),
-    scripts = ["bin/hcfpal.py", "bin/hcfcrawlmanager.py"],
     classifiers = [
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',

@@ -72,13 +72,13 @@ import datetime
 import logging
 
 from frontera import Backend
+from shub_workflow.utils import resolve_project_id
 
 from .manager import HCFManager
 from .utils import (
     convert_from_bytes,
     convert_to_bytes,
     assign_slotno,
-    get_project_id,
     get_apikey
 )
 
@@ -125,7 +125,7 @@ class HCFBackend(Backend):
         self.manager = manager
 
         self.hcf_auth = get_apikey()
-        self.hcf_project_id = get_project_id()
+        self.hcf_project_id = resolve_project_id()
 
         self.hcf_producer_frontier = None
         self.hcf_producer_slot_prefix = DEFAULT_HCF_PRODUCER_SLOT_PREFIX

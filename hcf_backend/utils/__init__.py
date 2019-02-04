@@ -48,13 +48,6 @@ def assign_slotno(path, numslots):
     return str(hash_mod(path, numslots))
 
 
-def get_project_id():
-    try:
-        return os.environ['SHUB_JOBKEY'].split('/')[0]
-    except KeyError:
-        pass
-
-
 def get_apikey():
     """Provides a facade to the multiple behaviors of parse_auth() and forces
     it to read the 'SH_APIKEY' env var and return it.

@@ -2,6 +2,7 @@
 Script for easy managing of consumer spiders from multiple slots. It checks available slots and schedules
 a job for each one.
 """
+
 import re
 import json
 import random
@@ -28,6 +29,10 @@ class HCFCrawlManager(CrawlManager):
         super().add_argparser_options()
         self.argparser.add_argument('frontier', help='Frontier name')
         self.argparser.add_argument('prefix', help='Slot prefix')
+
+    @property
+    def description(self):
+        return __doc__
 
     def workflow_loop(self):
         slot_re = re.compile(rf"{self.args.prefix}\d+")

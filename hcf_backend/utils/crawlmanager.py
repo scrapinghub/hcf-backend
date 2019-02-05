@@ -61,7 +61,8 @@ class HCFCrawlManager(CrawlManager):
 
             for slot in available_slots:
                 frontera_settings_json = json.dumps({
-                    'HCF_CONSUMER_SLOT': slot
+                    'HCF_CONSUMER_SLOT': slot,
+                    'HCF_CONSUMER_FRONTIER': self.args.frontier,
                 })
                 logger.info(f"Will schedule spider job with frontera settings {frontera_settings_json}")
                 jobkey = self.schedule_spider(spider_args_override={'frontera_settings_json': frontera_settings_json})

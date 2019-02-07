@@ -1,6 +1,5 @@
 import re
 import pprint
-import argparse
 from itertools import cycle
 
 import humanize
@@ -91,7 +90,7 @@ class HCFPalScript(BaseScript):
     def __init__(self):
         super().__init__()
         hsc = self.client._hsclient
-        self.hsp = hsc.get_project(self.args.project_id)
+        self.hsp = hsc.get_project(self.project_id)
         self.hcf = HCFPal(self.hsp)
 
     @property
@@ -145,7 +144,6 @@ class HCFPalScript(BaseScript):
                                        help='Max number of batches to scan in order to find target batch id in the \
                                              source slot')
 
-
     def run(self):
         if self.args.cmd == 'list':
             self.list_hcf()
@@ -163,21 +161,21 @@ class HCFPalScript(BaseScript):
     def delete_slots(self):
         prefix_note = ' (with prefix "{}")'.format(self.args.prefix) if self.args.prefix else ''
         print('Deleting slots{} from frontier "{}", project {}...'.format(
-            prefix_note, self.args.frontier, self.args.project_id))
+            prefix_note, self.args.frontier, self.project_id))
         slots = [slot for slot in self.hcf.get_slots(self.args.frontier) if slot.startswith(self.args.prefix)]
         self.hcf.delete_slots(self.args.frontier, slots)
         print('Slots deleted: {}'.format(slots))
 
     def list_hcf(self):
         if self.args.all:
-            print('Listing all frontiers and their slots in project {}:'.format(self.args.project_id))
+            print('Listing all frontiers and their slots in project {}:'.format(self.project_id))
             print(self.hcf.list_all(prettyprint=True))
         elif self.args.frontier:
-            print('Listing slots for frontier "{}" in project {}:'.format(self.args.frontier, self.args.project_id))
+            print('Listing slots for frontier "{}" in project {}:'.format(self.args.frontier, self.project_id))
             for slot in self.hcf.get_slots(self.args.frontier):
                 print('\t{}'.format(slot))
         else:
-            print('Listing frontiers in project {}:'.format(self.args.project_id))
+            print('Listing frontiers in project {}:'.format(self.project_id))
             for front in self.hcf.get_frontiers():
                 print('\t{}'.format(front))
 
@@ -188,7 +186,7 @@ class HCFPalScript(BaseScript):
         elif self.args.regex:
             note = ' (with regex "{}")'.format(self.args.regex)
         print('Counting requests in slots{} for frontier "{}", project {}:'.format(
-            note, self.args.frontier, self.args.project_id))
+            note, self.args.frontier, self.project_id))
         total = 0
         not_empty_slots = 0
         slots = ['{}{}'.format(self.args.prefix, slot) for slot in range(self.args.num_slots)] if \
@@ -210,7 +208,7 @@ class HCFPalScript(BaseScript):
 
     def dump_slot(self):
         print('Dumping next {} requests from slot {}, frontier {}, pid {}:'.format(
-            self.args.num_requests, self.args.slot, self.args.frontier, self.args.project_id))
+            self.args.num_requests, self.args.slot, self.args.frontier, self.project_id))
         count = 0
         for batch in self.hsp.frontier.read(self.args.frontier, self.args.slot, self.args.num_requests):
             print("Batch id:", batch['id'])
@@ -222,7 +220,7 @@ class HCFPalScript(BaseScript):
 
     def move_slots(self):
         print("Moving requests from frontier {}, pid {}, prefix {} into {} slots of prefix {}".format(
-            self.args.frontier, self.args.project_id, self.args.prefix, self.args.dest_num_slots,
+            self.args.frontier, self.project_id, self.args.prefix, self.args.dest_num_slots,
             self.args.dest_prefix))
         if self.args.num_slots:
             source_slots = [self.args.prefix + str(slotno) for slotno in range(self.args.num_slots)]
@@ -255,7 +253,7 @@ class HCFPalScript(BaseScript):
 
     def move_batch(self):
         print("Moving requests from frontier {}, pid {}, slot {}, batch {} to slot {}".format(
-            self.args.frontier, self.args.project_id, self.args.source_slot, self.args.batchid, self.args.dest_slot))
+            self.args.frontier, self.project_id, self.args.source_slot, self.args.batchid, self.args.dest_slot))
         for batch in self.hsp.frontier.read(self.args.frontier, self.args.source_slot, self.args.max_scan_batches):
             if batch['id'] == self.args.batchid:
                 frequests = []

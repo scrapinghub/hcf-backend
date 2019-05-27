@@ -343,13 +343,10 @@ class HCFBackend(Backend):
         Depending on the urls, this distribution might or not be evenly among
         the slots.
         """
-        if self.hcf_producer_slot_prefix:
-            fingerprint = request.meta[b'frontier_fingerprint']
-            slotno = assign_slotno(fingerprint, self.hcf_producer_number_of_slots)
-            slot = self.hcf_producer_slot_prefix + str(slotno)
-            return slot
-        else:
-            LOG.debug(f'Ignoring {request.url}: No hcf producer slot prefix provided.')
+        fingerprint = request.meta[b'frontier_fingerprint']
+        slotno = assign_slotno(fingerprint, self.hcf_producer_number_of_slots)
+        slot = self.hcf_producer_slot_prefix + str(slotno)
+        return slot
 
     def _get_consumer_stats_msg(self, msg=None):
         stats_msg = 'hcf/consumer/%s/%s' % (self.hcf_consumer_frontier, self.hcf_consumer_slot)

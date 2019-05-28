@@ -35,11 +35,12 @@ class HCFManager(object):
                 self._hcf.flush()
                 for slot in self._links_to_flush_count.keys():
                     self._links_to_flush_count[slot] = 0
+                LOG.info('Flushed %d link(s).', n_links_to_flush)
             else:
                 slot_obj = self._frontier.get(slot)
                 slot_obj.flush()
                 self._links_to_flush_count[slot] = 0
-            LOG.info('Flushed %d link(s).', n_links_to_flush)
+                LOG.info('Flushed %d link(s) to slot %s', slot)
 
         return n_links_to_flush
 

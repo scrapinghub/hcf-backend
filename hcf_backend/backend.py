@@ -310,8 +310,6 @@ class HCFBackend(Backend):
         slot = self.hcf_get_producer_slot(link)
         if slot:
             n_flushed_links = self.producer.add_request(slot, convert_from_bytes(hcf_request))
-            if n_flushed_links:
-                LOG.info('Flushing %d link(s) to slot %s', n_flushed_links, slot)
 
             self.stats.inc_value(self._get_producer_stats_msg(slot, msg='total_links'))
             self.stats.inc_value(self._get_producer_stats_msg(msg='total_links'))

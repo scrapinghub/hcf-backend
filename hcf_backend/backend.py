@@ -46,7 +46,8 @@ Backend settings:
 -----------------
 
 * HCF_AUTH - Hubstorage auth (not required if SH_APIKEY environment variable is set up)
-* HCF_PROJECT_ID - Hubstorage project id (not required if job run in scrapinghub ScrapyCloud)
+* HCF_PROJECT_ID - Hubstorage project id (not required if job run in scrapinghub ScrapyCloud, or PROJECT_ID
+                   environment variable is set up)
 
 If is producer:
 * HCF_PRODUCER_FRONTIER - The frontier where URLs are written.

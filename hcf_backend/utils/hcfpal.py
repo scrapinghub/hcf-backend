@@ -113,7 +113,7 @@ class HCFPalScript(BaseScript):
 
         parser_delete = subparsers.add_parser('delete', help='Delete slots from frontier')
         parser_delete.add_argument('frontier', help='Frontier to delete slots from')
-        parser_delete.add_argument('--prefix', help='Delete only slots with a given prefix')
+        parser_delete.add_argument('prefix', help='Delete only slots with a given prefix')
 
         parser_dump = subparsers.add_parser('dump', help='Dump next requests in queue of a frontier slot')
         parser_dump.add_argument('frontier', help='Frontier name from where to dump')

@@ -39,6 +39,8 @@ class HCFManager(object):
                 slot_obj = self._frontier.get(slot)
                 slot_obj.flush()
                 self._links_to_flush_count[slot] = 0
+            LOG.info('Flushed %d link(s).', n_links_to_flush)
+
         return n_links_to_flush
 
     def read(self, slot, mincount=None):

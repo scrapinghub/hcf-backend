@@ -184,8 +184,6 @@ class HCFBackend(Backend):
     def frontier_stop(self):
         if self.producer:
             n_flushed_links = self.producer.flush()
-            if n_flushed_links:
-                LOG.info('Flushing %d link(s) to all slots', n_flushed_links)
             self.producer.close()
             self._update_producer_new_links_stat()
 
@@ -233,6 +231,9 @@ class HCFBackend(Backend):
     def _get_requests_from_hs(self, n_min_requests):
         return_requests = []
         data = True
+
+        if self.producer is not None:
+            self.producer.flush()
 
         while data and len(return_requests) < n_min_requests and \
                 not (self._consumer_max_batches_reached() or self._consumer_max_requests_reached()):

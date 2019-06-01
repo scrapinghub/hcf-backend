@@ -183,7 +183,7 @@ class HCFBackend(Backend):
 
     def frontier_stop(self):
         if self.producer:
-            n_flushed_links = self.producer.flush()
+            self.producer.flush()
             self.producer.close()
             self._update_producer_new_links_stat()
 
@@ -309,7 +309,7 @@ class HCFBackend(Backend):
 
         slot = self.hcf_get_producer_slot(link)
         if slot:
-            n_flushed_links = self.producer.add_request(slot, convert_from_bytes(hcf_request))
+            self.producer.add_request(slot, convert_from_bytes(hcf_request))
 
             self.stats.inc_value(self._get_producer_stats_msg(slot, msg='total_links'))
             self.stats.inc_value(self._get_producer_stats_msg(msg='total_links'))

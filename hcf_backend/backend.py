@@ -344,8 +344,10 @@ class HCFBackend(Backend):
         the slots.
         """
         fingerprint = request.meta[b'frontier_fingerprint']
-        slotno = assign_slotno(fingerprint, self.hcf_producer_number_of_slots)
-        slot = request.meta.get(b'frontier_slot_prefix', self.hcf_producer_slot_prefix) + str(slotno)
+        slot_prefix = request.meta.get(b'frontier_slot_prefix', self.hcf_producer_slot_prefix)
+        num_slots = request.meta.get(b'frontier_number_of_slots', self.hcf_producer_number_of_slots)
+        slotno = assign_slotno(fingerprint, num_slots)
+        slot = slot_prefix + str(slotno)
         return slot
 
     def _get_consumer_stats_msg(self, msg=None):

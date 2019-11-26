@@ -8,6 +8,8 @@ import json
 import random
 import logging
 
+from scrapinghub import ScrapinghubClient
+
 from shub_workflow.crawl import CrawlManager
 
 from hcf_backend.utils.hcfpal import HCFPal
@@ -23,6 +25,7 @@ class HCFCrawlManager(CrawlManager):
 
     def __init__(self):
         super().__init__()
+        super.client = ScrapinghubClient(max_retries=10, max_retry_time=3600)
         self.hcfpal = HCFPal(self.client._hsclient.get_project(self.project_id))
 
     def add_argparser_options(self):

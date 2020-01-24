@@ -1,4 +1,4 @@
-import os
+import collections
 import hashlib
 import six
 
@@ -12,7 +12,8 @@ def convert_from_bytes(data):
             return data.decode('utf8')
         if data_type in (str, int, float, bool):
             return data
-        if data_type == dict:
+        if isinstance(data, collections.Mapping):
+            # Includes dict, OrderedDict, UserDict, items...
             data = data.items()
         return data_type(map(convert_from_bytes, data))
 

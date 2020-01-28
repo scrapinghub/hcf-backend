@@ -13,7 +13,7 @@ def convert_from_bytes(data):
         if data_type in (str, int, float, bool):
             return data
         if isinstance(data, collections.Mapping):
-            # Includes dict, OrderedDict, UserDict, items...
+            # Includes dict, OrderedDict, UserDict, scrapy.Item...
             data = data.items()
         return data_type(map(convert_from_bytes, data))
 

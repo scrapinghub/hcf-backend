@@ -8,7 +8,7 @@ See specific usage instructions at module and class docstrings at [backend.py](h
 Some examples of usage can be seen in the [scrapy-frontera README](https://github.com/scrapinghub/scrapy-frontera/blob/master/README.rst).
 
 A complete tutorial for using `hcf-backend` with ScrapyCloud workflows is available at
-[shub-workflow Tutorial: Managing Crawl Frontiers](https://github.com/scrapinghub/shub-workflow/wiki/Managing-Crawl-Frontiers). `shub-workflow` is a framework for
+[shub-workflow Tutorial: Managing Hubstorage Crawl Frontiers](https://github.com/scrapinghub/shub-workflow/wiki/Managing-Hubstorage-Crawl-Frontiers). `shub-workflow` is a framework for
 defining workflows of spiders and scripts running over ScrapyCloud. This is a strongly recommended lecture, because it documents the integration of different tools
 which together provide the best benefit.
 

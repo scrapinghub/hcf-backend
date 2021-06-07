@@ -29,10 +29,19 @@ class HCFCrawlManager(CrawlManager):
         super().add_argparser_options()
         self.argparser.add_argument('frontier', help='Frontier name')
         self.argparser.add_argument('prefix', help='Slot prefix')
+        self.argparser.add_argument('--frontera-settings-json')
 
     @property
     def description(self):
         return __doc__
+
+    def get_spider_args(self, override=None):
+        if self.args.frontera_settings_json is not None:
+            override = override or {}
+            override.update(
+                'frontera-settings-json': self.args.frontera_settings_json
+            )
+        return super().get_spider_args(override)
 
     def workflow_loop(self):
         slot_re = re.compile(rf"{self.args.prefix}\d+")

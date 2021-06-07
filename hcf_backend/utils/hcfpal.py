@@ -81,6 +81,26 @@ class HCFPal:
                 break
         return total
 
+    def get_slots_count(self, frontier, prefix, num_slots=None, regex=''):
+        result = {'slots': {}}
+        total = 0
+        not_empty_slots = 0
+        slots = ['{}{}'.format(prefix, slot) for slot in range(num_slots)] if \
+            num_slots else self.get_slots(frontier)
+        for slot in slots:
+            if not slot.startswith(prefix):
+                continue
+            if not re.search(regex, slot):
+                continue
+            cnt = self.get_slot_count(frontier, slot)
+            if cnt:
+                not_empty_slots += 1
+            total += cnt
+            result["slots"][slot] = cnt
+        result['total'] = total
+        result['not empty slots'] = not_empty_slots
+        return result
+
 
 # TODO: move code from this script to HCFPal class, leaving here only command line support
 class HCFPalScript(BaseScript):
@@ -187,24 +207,13 @@ class HCFPalScript(BaseScript):
             note = ' (with regex "{}")'.format(self.args.regex)
         print('Counting requests in slots{} for frontier "{}", project {}:'.format(
             note, self.args.frontier, self.project_id))
-        total = 0
-        not_empty_slots = 0
-        slots = ['{}{}'.format(self.args.prefix, slot) for slot in range(self.args.num_slots)] if \
-            self.args.num_slots else self.hcf.get_slots(self.args.frontier)
-        for slot in slots:
-            if not slot.startswith(self.args.prefix):
-                continue
-            if not re.search(self.args.regex, slot):
-                continue
-            cnt = self.hcf.get_slot_count(self.args.frontier, slot)
-            if cnt:
-                not_empty_slots += 1
-            total += cnt
-            cnt_text = '\t{}: {}'.format(slot, cnt)
+        result = self.hcf.get_slots_count(self.args.frontier, self.args.prefix, self.args.num_slots, self.args.regex)
+        for slot in sorted(result['slots'].keys()):
+            cnt_text = '\t{}: {}'.format(slot, result['slots'][slot])
             print(cnt_text)
         print('\t' + '-' * 25)
-        print('\tTotal count: {}'.format(humanize.intcomma(total)))
-        print('\tNot-empty slots: {}'.format(not_empty_slots))
+        print('\tTotal count: {}'.format(humanize.intcomma(result['total'])))
+        print('\tNot-empty slots: {}'.format(result['not empty slots']))
 
     def dump_slot(self):
         print('Dumping next {} requests from slot {}, frontier {}, pid {}:'.format(

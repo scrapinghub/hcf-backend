@@ -3,11 +3,11 @@ Script for easy managing of consumer spiders from multiple slots. It checks avai
 a job for each one.
 """
 
-import re
 import json
 import random
 import logging
 
+import humanize
 from shub_workflow.crawl import CrawlManager
 
 from hcf_backend.utils.hcfpal import HCFPal
@@ -38,14 +38,23 @@ class HCFCrawlManager(CrawlManager):
     def get_spider_args(self, override=None):
         if self.args.frontera_settings_json is not None:
             override = override or {}
-            override.update(
+            override.update({
                 'frontera-settings-json': self.args.frontera_settings_json
-            )
+            })
         return super().get_spider_args(override)
 
+    def print_frontier_status(self):
+        result = self.hcfpal.get_slots_count(self.args.frontier, self.args.prefix)
+        logger.info(f"Frontier '{self.args.frontier}' status:")
+        for slot in sorted(result['slots'].keys()):
+            cnt_text = '\t{}: {}'.format(slot, result['slots'][slot])
+            logger.info(cnt_text)
+        logger.info('\tTotal count: {}'.format(humanize.intcomma(result['total'])))
+
+        return set(result['slots'].keys())
+
     def workflow_loop(self):
-        slot_re = re.compile(rf"{self.args.prefix}\d+")
-        available_slots = set(slot for slot in self.hcfpal.get_slots(self.args.frontier) if slot_re.match(slot))
+        available_slots = self.print_frontier_status()
 
         running_jobs = 0
         states = 'running', 'pending'
@@ -54,7 +63,7 @@ class HCFCrawlManager(CrawlManager):
                 frontera_settings_json = json.loads(job['spider_args'].get('frontera_settings_json', '{}'))
                 if 'HCF_CONSUMER_SLOT' in frontera_settings_json:
                     slot = frontera_settings_json['HCF_CONSUMER_SLOT']
-                    if slot_re.match(slot):
+                    if slot in available_slots:
                         available_slots.discard(slot)
                         running_jobs += 1
 
@@ -66,7 +75,7 @@ class HCFCrawlManager(CrawlManager):
                 max_jobs = self.max_running_jobs - running_jobs
                 available_slots = available_slots[:max_jobs]
                 if not available_slots:
-                    logger.info(f"Already running max number of jobs.")
+                    logger.info("Already running max number of jobs.")
 
             for slot in available_slots:
                 frontera_settings_json = json.dumps({

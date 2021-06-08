@@ -35,14 +35,6 @@ class HCFCrawlManager(CrawlManager):
     def description(self):
         return __doc__
 
-    def get_spider_args(self, override=None):
-        if self.args.frontera_settings_json is not None:
-            override = override or {}
-            override.update(
-                {"frontera-settings-json": self.args.frontera_settings_json}
-            )
-        return super().get_spider_args(override)
-
     def print_frontier_status(self):
         result = self.hcfpal.get_slots_count(self.args.frontier, self.args.prefix)
         logger.info(f"Frontier '{self.args.frontier}' status:")
@@ -85,13 +77,18 @@ class HCFCrawlManager(CrawlManager):
                 if not available_slots:
                     logger.info("Already running max number of jobs.")
 
+            base_frontera_settings = {}
+            if self.args.frontera_settings_json:
+                base_frontera_settings = json.loads(self.args.frontera_settings_json)
             for slot in available_slots:
-                frontera_settings_json = json.dumps(
+                frontera_settings = base_frontera_settings.copy()
+                frontera_settings.update(
                     {
                         "HCF_CONSUMER_SLOT": slot,
                         "HCF_CONSUMER_FRONTIER": self.args.frontier,
                     }
                 )
+                frontera_settings_json = json.dumps(frontera_settings)
                 logger.info(
                     f"Will schedule spider job with frontera settings {frontera_settings_json}"
                 )

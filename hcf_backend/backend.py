@@ -54,6 +54,8 @@ If is producer:
 * HCF_PRODUCER_SLOT_PREFIX - Prefix to use for slot names.
 * HCF_PRODUCER_NUMBER_OF_SLOTS - Number of write slots to use.
 * HCF_PRODUCER_BATCH_SIZE - How often slot flush should be called. When a slot reaches the number, it is flushed.
+  HCF max batch size is 100, so if HCF_PRODUCER_BATCH_SIZE is greater than 100, will result on more than one HCF batches
+  of up to 100 requests each. If HCF_PRODUCER_BATCH_SIZE is lower than 100, will result on batches up to the given size.
 
 
 If is consumer:

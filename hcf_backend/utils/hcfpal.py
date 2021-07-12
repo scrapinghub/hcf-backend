@@ -1,6 +1,7 @@
 import re
 import pprint
-from itertools import cycle
+from itertools import cycle, groupby
+from operator import itemgetter
 
 import humanize
 import requests
@@ -101,6 +102,15 @@ class HCFPal:
         result['not empty slots'] = not_empty_slots
         return result
 
+    def dump_slot(self, frontier, slot, max_requests):
+        count = 0
+        for batch in self.project.frontier.read(frontier, slot, max_requests):
+            for request in batch['requests']:
+                yield batch["id"], request
+                count += 1
+                if count == max_requests:
+                    return
+
 
 # TODO: move code from this script to HCFPal class, leaving here only command line support
 class HCFPalScript(BaseScript):
@@ -177,6 +187,8 @@ class HCFPalScript(BaseScript):
             self.move_slots()
         elif self.args.cmd == 'move_batch':
             self.move_batch()
+        else:
+            self.argparser.print_help()
 
     def delete_slots(self):
         prefix_note = ' (with prefix "{}")'.format(self.args.prefix) if self.args.prefix else ''
@@ -218,14 +230,10 @@ class HCFPalScript(BaseScript):
     def dump_slot(self):
         print('Dumping next {} requests from slot {}, frontier {}, pid {}:'.format(
             self.args.num_requests, self.args.slot, self.args.frontier, self.project_id))
-        count = 0
-        for batch in self.hsp.frontier.read(self.args.frontier, self.args.slot, self.args.num_requests):
-            print("Batch id:", batch['id'])
-            for request in batch['requests']:
-                print(request)
-                count += 1
-                if count == self.args.num_requests:
-                    return
+        for batch_id, reqs in groupby(self.hcf.dump_slot(self.args.frontier, self.args.slot, self.args.num_requests), key=itemgetter(0)):
+            print("Batch id:", batch_id)
+            for _, req in reqs:
+                print(req)
 
     def move_slots(self):
         print("Moving requests from frontier {}, pid {}, prefix {} into {} slots of prefix {}".format(

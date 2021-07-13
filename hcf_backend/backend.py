@@ -82,7 +82,6 @@ from .utils import (
     convert_from_bytes,
     convert_to_bytes,
     assign_slotno,
-    get_apikey
 )
 
 
@@ -127,7 +126,7 @@ class HCFBackend(Backend):
     def __init__(self, manager):
         self.manager = manager
 
-        self.hcf_auth = get_apikey()
+        self.hcf_auth = None
         self.hcf_project_id = resolve_project_id()
 
         self.hcf_producer_frontier = None
@@ -329,15 +328,15 @@ class HCFBackend(Backend):
     def _init_roles(self):
 
         if self.hcf_producer_frontier:
-            self.producer = HCFManager(auth=self.hcf_auth,
-                                       project_id=self.hcf_project_id,
+            self.producer = HCFManager(project_id=self.hcf_project_id,
                                        frontier=self.hcf_producer_frontier,
+                                       auth=self.hcf_auth,
                                        batch_size=self.hcf_producer_batch_size)
 
         if self.hcf_consumer_frontier and self.hcf_consumer_slot:
-            self.consumer = HCFManager(auth=self.hcf_auth,
-                                       project_id=self.hcf_project_id,
-                                       frontier=self.hcf_consumer_frontier)
+            self.consumer = HCFManager(project_id=self.hcf_project_id,
+                                       frontier=self.hcf_consumer_frontier,
+                                       auth=self.hcf_auth)
 
     def hcf_get_producer_slot(self, request):
         """Determine to which slot should be saved the request.

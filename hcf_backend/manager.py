@@ -5,13 +5,17 @@ from collections import defaultdict
 import requests as requests_lib
 from scrapinghub import ScrapinghubClient
 
+from hcf_backend.utils import get_apikey
+
 
 LOG = logging.getLogger(__name__)
 
 
 class HCFManager(object):
 
-    def __init__(self, auth, project_id, frontier, batch_size=0):
+    def __init__(self, project_id, frontier, auth=None, batch_size=0):
+        if auth is None:
+            auth = get_apikey()
         self._client = ScrapinghubClient(auth=auth)
         self._hcf = self._client.get_project(project_id).frontiers
         self._frontier = self._hcf.get(frontier)

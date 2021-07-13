@@ -12,7 +12,6 @@ LOG = logging.getLogger(__name__)
 
 
 class HCFManager(object):
-
     def __init__(self, project_id, frontier, auth=None, batch_size=0):
         if auth is None:
             auth = get_apikey()
@@ -39,7 +38,7 @@ class HCFManager(object):
                 self._hcf.flush()
                 for slot in self._links_to_flush_count.keys():
                     self._links_to_flush_count[slot] = 0
-                LOG.info('Flushed %d link(s).', n_links_to_flush)
+                LOG.info("Flushed %d link(s).", n_links_to_flush)
             else:
                 slot_obj = self._frontier.get(slot)
                 slot_obj.flush()
@@ -53,14 +52,21 @@ class HCFManager(object):
             try:
                 return slot_obj.q.iter(mincount=mincount)
             except requests_lib.exceptions.ReadTimeout:
-                LOG.error("Could not read from {0}/{1} try {2}/{3}".format(self._frontier.key, slot, i+1,
-                                                                      self._hcf_retries))
+                LOG.error(
+                    "Could not read from {0}/{1} try {2}/{3}".format(self._frontier.key, slot, i + 1, self._hcf_retries)
+                )
             except requests_lib.exceptions.ConnectionError:
-                LOG.error("Connection error while reading from {0}/{1} try {2}/{3}".format(self._frontier.key, slot, i+1,
-                                                                      self._hcf_retries))
+                LOG.error(
+                    "Connection error while reading from {0}/{1} try {2}/{3}".format(
+                        self._frontier.key, slot, i + 1, self._hcf_retries
+                    )
+                )
             except requests_lib.exceptions.RequestException:
-                LOG.error("Error while reading from {0}/{1} try {2}/{3}".format(self._frontier.key, slot, i+1,
-                                                                      self._hcf_retries))
+                LOG.error(
+                    "Error while reading from {0}/{1} try {2}/{3}".format(
+                        self._frontier.key, slot, i + 1, self._hcf_retries
+                    )
+                )
             time.sleep(60 * (i + 1))
         return []
 
@@ -72,14 +78,23 @@ class HCFManager(object):
                 slot_obj.q.delete(ids)
                 break
             except requests_lib.exceptions.ReadTimeout:
-                LOG.error("Could not delete ids from {0}/{1} try {2}/{3}".format(
-                    self._frontier.key, slot, i+1, self._hcf_retries))
+                LOG.error(
+                    "Could not delete ids from {0}/{1} try {2}/{3}".format(
+                        self._frontier.key, slot, i + 1, self._hcf_retries
+                    )
+                )
             except requests_lib.exceptions.ConnectionError:
-                LOG.error("Connection error while deleting ids from {0}/{1} try {2}/{3}".format(
-                    self._frontier.key, slot, i+1, self._hcf_retries))
+                LOG.error(
+                    "Connection error while deleting ids from {0}/{1} try {2}/{3}".format(
+                        self._frontier.key, slot, i + 1, self._hcf_retries
+                    )
+                )
             except requests_lib.exceptions.RequestException:
-                LOG.error("Error deleting ids from {0}/{1} try {2}/{3}".format(
-                    self._frontier.key, slot, i+1, self._hcf_retries))
+                LOG.error(
+                    "Error deleting ids from {0}/{1} try {2}/{3}".format(
+                        self._frontier.key, slot, i + 1, self._hcf_retries
+                    )
+                )
             time.sleep(60 * (i + 1))
 
     def delete_slot(self, slot):

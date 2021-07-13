@@ -77,23 +77,23 @@ import logging
 from frontera import Backend
 from shub_workflow.utils import resolve_project_id
 
-from .manager import HCFManager
-from .utils import (
+from hcf_backend.manager import HCFManager
+from hcf_backend.utils import (
     convert_from_bytes,
     convert_to_bytes,
     assign_slotno,
 )
 
 
-__all__ = ['HCFBackend']
+__all__ = ["HCFBackend"]
 
 LOG = logging.getLogger(__name__)
 
 
 DEFAULT_HCF_PRODUCER_NUMBER_OF_SLOTS = 1
-DEFAULT_HCF_PRODUCER_SLOT_PREFIX = ''
+DEFAULT_HCF_PRODUCER_SLOT_PREFIX = ""
 DEFAULT_HCF_PRODUCER_BATCH_SIZE = 1000
-DEFAULT_HCF_CONSUMER_SLOT = '0'
+DEFAULT_HCF_CONSUMER_SLOT = "0"
 DEFAULT_HCF_CONSUMER_MAX_BATCHES = 0
 DEFAULT_HCF_CONSUMER_MAX_REQUESTS = 0
 
@@ -101,23 +101,21 @@ DEFAULT_HCF_CONSUMER_MAX_REQUESTS = 0
 class HCFBackend(Backend):
 
     backend_settings = (
-        'HCF_AUTH',
-        'HCF_PROJECT_ID',
-
-        'HCF_PRODUCER_FRONTIER',
-        'HCF_PRODUCER_SLOT_PREFIX',
-        'HCF_PRODUCER_NUMBER_OF_SLOTS',
-        'HCF_PRODUCER_BATCH_SIZE',
-
-        'HCF_CONSUMER_FRONTIER',
-        'HCF_CONSUMER_SLOT',
-        'HCF_CONSUMER_MAX_BATCHES',
-        'HCF_CONSUMER_MAX_REQUESTS',
-        'HCF_CONSUMER_DONT_DELETE_REQUESTS',
-        'HCF_CONSUMER_DELETE_BATCHES_ON_STOP',
+        "HCF_AUTH",
+        "HCF_PROJECT_ID",
+        "HCF_PRODUCER_FRONTIER",
+        "HCF_PRODUCER_SLOT_PREFIX",
+        "HCF_PRODUCER_NUMBER_OF_SLOTS",
+        "HCF_PRODUCER_BATCH_SIZE",
+        "HCF_CONSUMER_FRONTIER",
+        "HCF_CONSUMER_SLOT",
+        "HCF_CONSUMER_MAX_BATCHES",
+        "HCF_CONSUMER_MAX_REQUESTS",
+        "HCF_CONSUMER_DONT_DELETE_REQUESTS",
+        "HCF_CONSUMER_DELETE_BATCHES_ON_STOP",
     )
 
-    component_name = 'HCF Backend'
+    component_name = "HCF Backend"
 
     @classmethod
     def from_manager(cls, manager):
@@ -141,7 +139,7 @@ class HCFBackend(Backend):
         self.hcf_consumer_dont_delete_requests = False
         self.hcf_consumer_delete_batches_on_stop = False
 
-        self.stats = self.manager.settings.get('STATS_MANAGER')
+        self.stats = self.manager.settings.get("STATS_MANAGER")
 
         self.n_consumed_batches = 0
         self.n_consumed_requests = 0
@@ -177,10 +175,7 @@ class HCFBackend(Backend):
 
     def _update_producer_new_links_stat(self):
         for slot, newcount in self._get_producer_newcounts():
-            self.stats.set_value(
-                self._get_producer_stats_msg(slot=slot, msg='new_links'),
-                newcount
-            )
+            self.stats.set_value(self._get_producer_stats_msg(slot=slot, msg="new_links"), newcount)
 
     def frontier_stop(self):
         if self.producer:
@@ -214,8 +209,11 @@ class HCFBackend(Backend):
         if self.hcf_consumer_max_requests > 0:
             max_next_requests = min(max_next_requests, self.hcf_consumer_max_requests - self.n_consumed_requests)
 
-        if self.consumer and not (self._consumer_max_batches_reached() or self._consumer_max_requests_reached()) \
-                and max_next_requests:
+        if (
+            self.consumer
+            and not (self._consumer_max_batches_reached() or self._consumer_max_requests_reached())
+            and max_next_requests
+        ):
             for request in self._get_requests_from_hs(max_next_requests):
                 requests.append(request)
 
@@ -223,11 +221,11 @@ class HCFBackend(Backend):
 
     @staticmethod
     def _convert_qdata_to_bytes(qdata):
-        req = qdata['request']
-        req['headers'] = convert_to_bytes(req.get('headers', {}))
-        req['cookies'] = convert_to_bytes(req.get('cookies', {}))
-        for key in list(req.get('meta', {}).keys()):
-            req['meta'][key.encode('utf8')] = req['meta'].pop(key)
+        req = qdata["request"]
+        req["headers"] = convert_to_bytes(req.get("headers", {}))
+        req["cookies"] = convert_to_bytes(req.get("cookies", {}))
+        for key in list(req.get("meta", {}).keys()):
+            req["meta"][key.encode("utf8")] = req["meta"].pop(key)
 
     def _get_requests_from_hs(self, n_min_requests):
         return_requests = []
@@ -236,30 +234,32 @@ class HCFBackend(Backend):
         if self.producer is not None:
             self.producer.flush()
 
-        while data and len(return_requests) < n_min_requests and \
-                not (self._consumer_max_batches_reached() or self._consumer_max_requests_reached()):
+        while (
+            data
+            and len(return_requests) < n_min_requests
+            and not (self._consumer_max_batches_reached() or self._consumer_max_requests_reached())
+        ):
             data = False
             for batch in self.consumer.read(self.hcf_consumer_slot, n_min_requests):
                 data = True
-                batch_id = batch['id']
+                batch_id = batch["id"]
                 if batch_id in self.consumed_batches_ids:
                     return return_requests
-                requests = batch['requests']
-                self.stats.inc_value(self._get_consumer_stats_msg('requests'), len(requests))
+                requests = batch["requests"]
+                self.stats.inc_value(self._get_consumer_stats_msg("requests"), len(requests))
                 for fingerprint, qdata in requests:
                     self._convert_qdata_to_bytes(qdata)
                     request = self._make_request(fingerprint, qdata)
                     if request is not None:
-                        request.meta.update({
-                            b'created_at': datetime.datetime.utcnow(),
-                            b'depth': 0,
-                        })
+                        request.meta.update(
+                            {b"created_at": datetime.datetime.utcnow(), b"depth": 0}
+                        )
                         return_requests.append(request)
                         self.n_consumed_requests += 1
                 self.consumed_batches_ids.append(batch_id)
                 self.n_consumed_batches += 1
-                self.stats.inc_value(self._get_consumer_stats_msg('batches'))
-                LOG.info('Reading %d request(s) from batch %s ', len(requests), batch_id)
+                self.stats.inc_value(self._get_consumer_stats_msg("batches"))
+                LOG.info("Reading %d request(s) from batch %s ", len(requests), batch_id)
 
             if not self.hcf_consumer_dont_delete_requests and not self.hcf_consumer_delete_batches_on_stop:
                 self.delete_read_batches()
@@ -270,50 +270,47 @@ class HCFBackend(Backend):
     def delete_read_batches(self):
         if self.consumed_batches_ids:
             self.consumer.delete(self.hcf_consumer_slot, self.consumed_batches_ids)
-            LOG.info('Deleting read batches: %s', self.consumed_batches_ids)
+            LOG.info("Deleting read batches: %s", self.consumed_batches_ids)
         self.consumed_batches_ids = []
 
     def _make_request(self, fingerprint, qdata):
-        kwargs = qdata['request']
-        kwargs['meta'][b'frontier_fingerprint'] = fingerprint
-        return self.manager.request_model(qdata['url'], **kwargs)
+        kwargs = qdata["request"]
+        kwargs["meta"][b"frontier_fingerprint"] = fingerprint
+        return self.manager.request_model(qdata["url"], **kwargs)
 
     def _log_start_message(self):
-        producer_message = 'NO'
-        consumer_message = 'NO'
+        producer_message = "NO"
+        consumer_message = "NO"
         if self.producer:
             if self.hcf_producer_number_of_slots > 1:
-                slots_message = '[0-%d]' % (self.hcf_producer_number_of_slots-1)
+                slots_message = "[0-%d]" % (self.hcf_producer_number_of_slots - 1)
             else:
-                slots_message = '0'
-            producer_message = '%s/%s%s' % (self.hcf_producer_frontier,
-                                            self.hcf_producer_slot_prefix,
-                                            slots_message)
+                slots_message = "0"
+            producer_message = "%s/%s%s" % (self.hcf_producer_frontier, self.hcf_producer_slot_prefix, slots_message)
         if self.consumer:
-            consumer_message = '%s/%s' % (self.hcf_consumer_frontier,
-                                          self.hcf_consumer_slot)
-        LOG.info('HCF project: %s', self.hcf_project_id)
-        LOG.info('HCF producer: %s', producer_message)
-        LOG.info('HCF consumer: %s', consumer_message)
+            consumer_message = "%s/%s" % (self.hcf_consumer_frontier, self.hcf_consumer_slot)
+        LOG.info("HCF project: %s", self.hcf_project_id)
+        LOG.info("HCF producer: %s", producer_message)
+        LOG.info("HCF consumer: %s", consumer_message)
 
     def _process_hcf_link(self, link):
         if not self.producer:
-            LOG.debug(f'Ignoring {link.url}: backend not configured as producer')
+            LOG.debug(f"Ignoring {link.url}: backend not configured as producer")
             return
-        link.meta.pop(b'origin_is_frontier', None)
-        hcf_request = {'fp': link.meta[b'frontier_fingerprint']}
-        qdata = {'request': {}}
-        for attr in ('method', 'headers', 'cookies', 'meta'):
-            qdata['request'][attr] = getattr(link, attr)
-        qdata['url'] = link.url
-        hcf_request['qdata'] = qdata
+        link.meta.pop(b"origin_is_frontier", None)
+        hcf_request = {"fp": link.meta[b"frontier_fingerprint"]}
+        qdata = {"request": {}}
+        for attr in ("method", "headers", "cookies", "meta"):
+            qdata["request"][attr] = getattr(link, attr)
+        qdata["url"] = link.url
+        hcf_request["qdata"] = qdata
 
         slot = self.hcf_get_producer_slot(link)
         if slot:
             self.producer.add_request(slot, convert_from_bytes(hcf_request))
 
-            self.stats.inc_value(self._get_producer_stats_msg(slot, msg='total_links'))
-            self.stats.inc_value(self._get_producer_stats_msg(msg='total_links'))
+            self.stats.inc_value(self._get_producer_stats_msg(slot, msg="total_links"))
+            self.stats.inc_value(self._get_producer_stats_msg(msg="total_links"))
 
     def _consumer_max_batches_reached(self):
         if not self.hcf_consumer_max_batches:
@@ -328,15 +325,17 @@ class HCFBackend(Backend):
     def _init_roles(self):
 
         if self.hcf_producer_frontier:
-            self.producer = HCFManager(project_id=self.hcf_project_id,
-                                       frontier=self.hcf_producer_frontier,
-                                       auth=self.hcf_auth,
-                                       batch_size=self.hcf_producer_batch_size)
+            self.producer = HCFManager(
+                project_id=self.hcf_project_id,
+                frontier=self.hcf_producer_frontier,
+                auth=self.hcf_auth,
+                batch_size=self.hcf_producer_batch_size,
+            )
 
         if self.hcf_consumer_frontier and self.hcf_consumer_slot:
-            self.consumer = HCFManager(project_id=self.hcf_project_id,
-                                       frontier=self.hcf_consumer_frontier,
-                                       auth=self.hcf_auth)
+            self.consumer = HCFManager(
+                project_id=self.hcf_project_id, frontier=self.hcf_consumer_frontier, auth=self.hcf_auth
+            )
 
     def hcf_get_producer_slot(self, request):
         """Determine to which slot should be saved the request.
@@ -344,25 +343,25 @@ class HCFBackend(Backend):
         Depending on the urls, this distribution might or not be evenly among
         the slots.
         """
-        fingerprint = request.meta[b'frontier_fingerprint']
-        slot_prefix = request.meta.get(b'frontier_slot_prefix', self.hcf_producer_slot_prefix)
-        num_slots = request.meta.get(b'frontier_number_of_slots', self.hcf_producer_number_of_slots)
+        fingerprint = request.meta[b"frontier_fingerprint"]
+        slot_prefix = request.meta.get(b"frontier_slot_prefix", self.hcf_producer_slot_prefix)
+        num_slots = request.meta.get(b"frontier_number_of_slots", self.hcf_producer_number_of_slots)
         slotno = assign_slotno(fingerprint, num_slots)
         slot = slot_prefix + str(slotno)
         return slot
 
     def _get_consumer_stats_msg(self, msg=None):
-        stats_msg = 'hcf/consumer/%s/%s' % (self.hcf_consumer_frontier, self.hcf_consumer_slot)
+        stats_msg = "hcf/consumer/%s/%s" % (self.hcf_consumer_frontier, self.hcf_consumer_slot)
         if msg:
-            stats_msg += '/%s' % msg
+            stats_msg += "/%s" % msg
         return stats_msg
 
     def _get_producer_stats_msg(self, slot=None, msg=None):
-        stats_msg = 'hcf/producer/%s' % (self.hcf_producer_frontier)
+        stats_msg = "hcf/producer/%s" % (self.hcf_producer_frontier)
         if slot:
-            stats_msg += '/%s' % slot
+            stats_msg += "/%s" % slot
         if msg:
-            stats_msg += '/%s' % msg
+            stats_msg += "/%s" % msg
         return stats_msg
 
     def request_error(self, request, error):

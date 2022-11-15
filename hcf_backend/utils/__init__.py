@@ -1,6 +1,10 @@
-import collections
 import hashlib
 import six
+
+try:
+    from collections import Mapping
+except ImportError:
+    rom collections.abc import Mapping
 
 from scrapinghub.client import parse_auth
 
@@ -12,7 +16,7 @@ def convert_from_bytes(data):
             return data.decode('utf8')
         if data_type in (str, int, float, bool):
             return data
-        if isinstance(data, collections.Mapping):
+        if isinstance(data, Mapping):
             # Includes dict, OrderedDict, UserDict, scrapy.Item...
             data = data.items()
         return data_type(map(convert_from_bytes, data))

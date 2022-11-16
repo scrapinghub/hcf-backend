@@ -251,9 +251,7 @@ class HCFBackend(Backend):
                     self._convert_qdata_to_bytes(qdata)
                     request = self._make_request(fingerprint, qdata)
                     if request is not None:
-                        request.meta.update(
-                            {b"created_at": datetime.datetime.utcnow(), b"depth": 0}
-                        )
+                        request.meta.update({b"created_at": datetime.datetime.utcnow(), b"depth": 0})
                         return_requests.append(request)
                         self.n_consumed_requests += 1
                 self.consumed_batches_ids.append(batch_id)

@@ -1,6 +1,6 @@
 """
-shub-workflow based script (runs on Zyte ScrapyCloud) for easy managing of consumer spiders from multiple slots. It checks available slots and schedules
-a job for each one.
+shub-workflow based script (runs on Zyte ScrapyCloud) for easy managing of consumer spiders
+from multiple slots. It checks available slots and schedules a job for each one.
 """
 
 import json

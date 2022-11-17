@@ -93,9 +93,8 @@ class HCFCrawlManager(CrawlManager):
                     f"Will schedule spider job with frontera settings {frontera_settings_json}"
                 )
                 jobkey = self.schedule_spider(
-                    spider_args_override={
-                        "frontera_settings_json": frontera_settings_json
-                    }
+                    self.args.spider,
+                    frontera_settings_json=frontera_settings_json,
                 )
                 logger.info(
                     f"Scheduled job {jobkey} with frontera settings {frontera_settings_json}"

@@ -2,6 +2,7 @@ import re
 import pprint
 from itertools import cycle, groupby
 from operator import itemgetter
+from typing import Optional
 
 import humanize
 import requests
@@ -21,8 +22,9 @@ class HCFPal(SCProjectClass):
         "list_slots": "https://storage.scrapinghub.com/hcf/{pid}/{frontier}/list",
     }
 
-    def __init__(self):
+    def __init__(self, project_id: Optional[int] = None):
         super().__init__()
+        self.project_id = project_id or self.project_id
         hsc = self.client._hsclient
         self.project = hsc.get_project(self.project_id)
 

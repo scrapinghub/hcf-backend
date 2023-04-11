@@ -23,7 +23,7 @@ class HCFCrawlManager(CrawlManager):
 
     def __init__(self):
         super().__init__()
-        self.hcfpal = HCFPal(self.client._hsclient.get_project(self.project_id))
+        self.hcfpal = HCFPal(self.project_id)
 
     def add_argparser_options(self):
         super().add_argparser_options()

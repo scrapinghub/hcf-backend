@@ -8,7 +8,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 from requests.exceptions import HTTPError, ConnectionError
 from retrying import retry
-from shub_workflow.script import BaseScript
+from shub_workflow.script import BaseScript, SCProjectClass
 
 from hcf_backend.utils import assign_slotno
 
@@ -21,7 +21,7 @@ def retry_if_http_error(e):
     return False
 
 
-class HCFPal:
+class HCFPal(SCProjectClass):
 
     HCF_API_URLS = {
         "count": "https://storage.scrapinghub.com/hcf/{pid}/{frontier}/s/{slot}/q/count",
@@ -29,12 +29,10 @@ class HCFPal:
         "list_slots": "https://storage.scrapinghub.com/hcf/{pid}/{frontier}/list",
     }
 
-    def __init__(self, project):
-        self.project = project
-
-    @property
-    def projectid(self):
-        return self.project.projectid
+    def __init__(self):
+        super().__init__()
+        hsc = self.client._hsclient
+        self.project = hsc.get_project(self.project_id)
 
     @property
     def auth(self):
@@ -49,11 +47,11 @@ class HCFPal:
         return response.json()
 
     def get_frontiers(self):
-        url = self.HCF_API_URLS["list_frontiers"].format(pid=self.projectid)
+        url = self.HCF_API_URLS["list_frontiers"].format(pid=self.project_id)
         return self._get_json(url)
 
     def get_slots(self, frontier):
-        url = self.HCF_API_URLS["list_slots"].format(pid=self.projectid, frontier=frontier)
+        url = self.HCF_API_URLS["list_slots"].format(pid=self.project_id, frontier=frontier)
         return self._get_json(url)
 
     def delete_slots(self, frontier, slots):
@@ -70,7 +68,7 @@ class HCFPal:
             return yall
 
     def get_slot_count(self, frontier, slot):
-        URL = self.HCF_API_URLS["count"].format(pid=self.projectid, frontier=frontier, slot=slot)
+        URL = self.HCF_API_URLS["count"].format(pid=self.project_id, frontier=frontier, slot=slot)
         total = 0
         nextstart = ""
         while True:
@@ -120,7 +118,7 @@ class HCFPalScript(BaseScript):
         super().__init__()
         hsc = self.client._hsclient
         self.hsp = hsc.get_project(self.project_id)
-        self.hcf = HCFPal(self.hsp)
+        self.hcf = HCFPal()
 
     @property
     def description(self):

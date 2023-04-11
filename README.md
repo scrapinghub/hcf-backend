@@ -23,3 +23,19 @@ Installation
 ============
 
 `pip install hcf-backend`
+
+
+Development environment setup
+=============================
+
+For hcf-backend developers, Pipfile files are provided for a development environment.
+
+Run:
+
+```
+$ pipenv install --dev
+$ pipenv shell
+$ cp .envtemplate .env
+```
+
+and edit .env accordingly

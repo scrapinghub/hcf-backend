@@ -6,19 +6,11 @@ from operator import itemgetter
 import humanize
 import requests
 from requests.auth import HTTPBasicAuth
-from requests.exceptions import HTTPError, ConnectionError
 from retrying import retry
 from shub_workflow.script import BaseScript, SCProjectClass
+from shub_workflow.utils import dash_retry_decorator
 
 from hcf_backend.utils import assign_slotno
-
-
-def retry_if_http_error(e):
-    for exctype in HTTPError, ConnectionError:
-        if isinstance(e, exctype):
-            print(f"Error: {e}. Retrying...")
-            return True
-    return False
 
 
 class HCFPal(SCProjectClass):
@@ -38,9 +30,7 @@ class HCFPal(SCProjectClass):
     def auth(self):
         return self.project.auth
 
-    @retry(
-        retry_on_exception=retry_if_http_error, wait_fixed=60000, stop_max_attempt_number=60 * 24,  # 1 min
-    )  # 1 day
+    @dash_retry_decorator
     def _get_json(self, url):
         response = requests.get(url, auth=HTTPBasicAuth(*self.auth))
         response.raise_for_status()

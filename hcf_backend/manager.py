@@ -1,6 +1,7 @@
 import logging
 import time
 from collections import defaultdict
+from typing import Optional, Dict
 
 import requests as requests_lib
 from scrapinghub import ScrapinghubClient
@@ -13,19 +14,19 @@ LOG = logging.getLogger(__name__)
 
 
 class HCFManager(object):
-    def __init__(self, frontier, project_id=None, auth=None, batch_size=0):
+    def __init__(self, frontier: str, project_id: Optional[int] = None, auth: Optional[str] = None, batch_size: int =0):
         if auth is None:
             auth = get_apikey()
         self._client = ScrapinghubClient(auth=auth)
         project_id = project_id or resolve_project_id()
         self._hcf = self._client.get_project(project_id).frontiers
         self._frontier = self._hcf.get(frontier)
-        self._links_count = defaultdict(int)
-        self._links_to_flush_count = defaultdict(int)
+        self._links_count: Dict[str, int] = defaultdict(int)
+        self._links_to_flush_count: Dict[str, int] = defaultdict(int)
         self._batch_size = batch_size
         self._hcf_retries = 10
 
-    def add_request(self, slot, request):
+    def add_request(self, slot: str, request):
         self._frontier.get(slot).q.add([request])
         self._links_count[slot] += 1
         self._links_to_flush_count[slot] += 1

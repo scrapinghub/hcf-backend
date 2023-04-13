@@ -14,7 +14,9 @@ LOG = logging.getLogger(__name__)
 
 
 class HCFManager(object):
-    def __init__(self, frontier: str, project_id: Optional[int] = None, auth: Optional[str] = None, batch_size: int =0):
+    def __init__(
+        self, frontier: str, project_id: Optional[int] = None, auth: Optional[str] = None, batch_size: int = 0
+    ):
         if auth is None:
             auth = get_apikey()
         self._client = ScrapinghubClient(auth=auth)

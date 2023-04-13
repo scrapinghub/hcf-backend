@@ -7,7 +7,6 @@ from typing import Optional
 import humanize
 import requests
 from requests.auth import HTTPBasicAuth
-from retrying import retry
 from shub_workflow.script import BaseScript, SCProjectClass
 from shub_workflow.utils import dash_retry_decorator
 

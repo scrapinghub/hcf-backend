@@ -324,15 +324,15 @@ class HCFBackend(Backend):
 
         if self.hcf_producer_frontier:
             self.producer = HCFManager(
-                project_id=self.hcf_project_id,
                 frontier=self.hcf_producer_frontier,
+                project_id=self.hcf_project_id,
                 auth=self.hcf_auth,
                 batch_size=self.hcf_producer_batch_size,
             )
 
         if self.hcf_consumer_frontier and self.hcf_consumer_slot:
             self.consumer = HCFManager(
-                project_id=self.hcf_project_id, frontier=self.hcf_consumer_frontier, auth=self.hcf_auth
+                frontier=self.hcf_consumer_frontier, project_id=self.hcf_project_id, auth=self.hcf_auth
             )
 
     def hcf_get_producer_slot(self, request):

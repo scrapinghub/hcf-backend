@@ -109,7 +109,7 @@ class HCFPalScript(BaseScript):
         super().__init__()
         hsc = self.client._hsclient
         self.hsp = hsc.get_project(self.project_id)
-        self.hcf = HCFPal()
+        self.hcf = HCFPal(self.project_id)
 
     @property
     def description(self):

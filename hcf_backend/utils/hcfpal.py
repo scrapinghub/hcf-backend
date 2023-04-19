@@ -2,7 +2,7 @@ import re
 import pprint
 from itertools import cycle, groupby
 from operator import itemgetter
-from typing import Optional
+from typing import Optional, TypedDict, Dict
 
 import humanize
 import requests
@@ -11,6 +11,12 @@ from shub_workflow.script import BaseScript, SCProjectClass
 from shub_workflow.utils import dash_retry_decorator
 
 from hcf_backend.utils import assign_slotno
+
+
+class SlotsInfo(TypedDict):
+    slots: Dict[str, int]
+    total: int
+    not_empty_slots: int
 
 
 class HCFPal(SCProjectClass):
@@ -71,8 +77,8 @@ class HCFPal(SCProjectClass):
                 break
         return total
 
-    def get_slots_count(self, frontier, prefix, num_slots=None, regex=""):
-        result = {"slots": {}}
+    def get_slots_count(self, frontier, prefix, num_slots: Optional[int] = None, regex: str = "") -> SlotsInfo:
+        result: SlotsInfo = {"slots": {}, "total": 0, "not_empty_slots": 0}
         total = 0
         not_empty_slots = 0
         slots = ["{}{}".format(prefix, slot) for slot in range(num_slots)] if num_slots else self.get_slots(frontier)
@@ -87,7 +93,7 @@ class HCFPal(SCProjectClass):
             total += cnt
             result["slots"][slot] = cnt
         result["total"] = total
-        result["not empty slots"] = not_empty_slots
+        result["not_empty_slots"] = not_empty_slots
         return result
 
     def dump_slot(self, frontier, slot, max_requests):
@@ -239,7 +245,7 @@ class HCFPalScript(BaseScript):
             print(cnt_text)
         print("\t" + "-" * 25)
         print("\tTotal count: {}".format(humanize.intcomma(result["total"])))
-        print("\tNot-empty slots: {}".format(result["not empty slots"]))
+        print("\tNot-empty slots: {}".format(result["not_empty_slots"]))
 
     def dump_slot(self):
         print(

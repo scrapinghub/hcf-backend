@@ -28,6 +28,9 @@ class HCFManager(object):
         self._batch_size = batch_size
         self._hcf_retries = 10
 
+    def new_links_count(self):
+        return self._hcf.newcount
+
     def add_request(self, slot: str, request):
         self._frontier.get(slot).q.add([request])
         self._links_count[slot] += 1

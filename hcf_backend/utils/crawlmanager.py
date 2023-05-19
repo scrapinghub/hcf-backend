@@ -51,7 +51,7 @@ class HCFCrawlManager(CrawlManager):
         running_jobs = 0
         states = "running", "pending"
         for state in states:
-            for job in self.get_project().jobs.list(
+            for job in self.get_owned_jobs(
                 spider=self.args.spider, state=state, meta="spider_args"
             ):
                 frontera_settings_json = json.loads(

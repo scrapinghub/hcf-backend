@@ -52,7 +52,7 @@ class HCFCrawlManager(CrawlManager):
         states = "running", "pending"
         for state in states:
             for job in self.get_owned_jobs(
-                spider=self.args.spider, state=state, meta="spider_args"
+                spider=self.args.spider, state=state, meta=["spider_args"]
             ):
                 frontera_settings_json = json.loads(
                     job["spider_args"].get("frontera_settings_json", "{}")

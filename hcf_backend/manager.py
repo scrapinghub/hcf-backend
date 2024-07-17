@@ -4,6 +4,7 @@ from collections import defaultdict
 from typing import Optional, Dict
 
 import requests as requests_lib
+import scrapinghub
 from scrapinghub import ScrapinghubClient
 from shub_workflow.utils import resolve_project_id
 
@@ -63,7 +64,7 @@ class HCFManager(object):
                 LOG.error(
                     "Could not read from {0}/{1} try {2}/{3}".format(self._frontier.key, slot, i + 1, self._hcf_retries)
                 )
-            except requests_lib.exceptions.ConnectionError:
+            except (requests_lib.exceptions.ConnectionError, scrapinghub.client.exceptions.ServerError):
                 LOG.error(
                     "Connection error while reading from {0}/{1} try {2}/{3}".format(
                         self._frontier.key, slot, i + 1, self._hcf_retries
@@ -91,7 +92,7 @@ class HCFManager(object):
                         self._frontier.key, slot, i + 1, self._hcf_retries
                     )
                 )
-            except requests_lib.exceptions.ConnectionError:
+            except (requests_lib.exceptions.ConnectionError, scrapinghub.client.exceptions.ServerError):
                 LOG.error(
                     "Connection error while deleting ids from {0}/{1} try {2}/{3}".format(
                         self._frontier.key, slot, i + 1, self._hcf_retries

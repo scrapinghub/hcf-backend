@@ -1,3 +1,3 @@
 from .backend import *
 
-__version__ = '0.5.2.5'
+__version__ = "0.5.3"

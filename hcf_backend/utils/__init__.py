@@ -10,7 +10,7 @@ def convert_from_bytes(data):
     if data is not None:
         data_type = type(data)
         if data_type == bytes:
-            return data.decode('utf8')
+            return data.decode("utf8")
         if data_type in (str, int, float, bool):
             return data
         if isinstance(data, Mapping):
@@ -23,7 +23,7 @@ def convert_to_bytes(data):
     if data is not None:
         data_type = type(data)
         if data_type == str:
-            return data.encode('utf8')
+            return data.encode("utf8")
         if data_type in (bytes, int, float, bool):
             return data
         if data_type == dict:
@@ -36,7 +36,7 @@ def hash_mod(text, divisor):
     returns the module of dividing text md5 hash over given divisor
     """
     if isinstance(text, six.text_type):
-        text = text.encode('utf8')
+        text = text.encode("utf8")
     md5 = hashlib.md5()
     md5.update(text)
     digest = md5.hexdigest()

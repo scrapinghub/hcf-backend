@@ -51,23 +51,15 @@ class HCFCrawlManager(CrawlManager):
         running_jobs = 0
         states = "running", "pending"
         for state in states:
-            for job in self.get_owned_jobs(
-                spider=self.args.spider, state=state, meta=["spider_args"]
-            ):
-                frontera_settings_json = json.loads(
-                    job["spider_args"].get("frontera_settings_json", "{}")
-                )
+            for job in self.get_owned_jobs(spider=self.args.spider, state=state, meta=["spider_args"]):
+                frontera_settings_json = json.loads(job["spider_args"].get("frontera_settings_json", "{}"))
                 if "HCF_CONSUMER_SLOT" in frontera_settings_json:
                     slot = frontera_settings_json["HCF_CONSUMER_SLOT"]
                     if slot in available_slots:
                         available_slots.discard(slot)
                         running_jobs += 1
 
-        available_slots = [
-            slot
-            for slot in available_slots
-            if self.hcfpal.get_slot_count(self.args.frontier, slot) > 0
-        ]
+        available_slots = [slot for slot in available_slots if self.hcfpal.get_slot_count(self.args.frontier, slot) > 0]
         logger.info(f"Available slots: {available_slots!r}")
         if available_slots:
             random.shuffle(available_slots)
@@ -89,18 +81,14 @@ class HCFCrawlManager(CrawlManager):
                     }
                 )
                 frontera_settings_json = json.dumps(frontera_settings)
-                logger.info(
-                    f"Will schedule spider job with frontera settings {frontera_settings_json}"
-                )
+                logger.info(f"Will schedule spider job with frontera settings {frontera_settings_json}")
                 jobkey = self.schedule_spider_with_jobargs(
                     job_args_override={
                         "spider_args": {"frontera_settings_json": frontera_settings_json},
                     },
                     spider=self.args.spider,
                 )
-                logger.info(
-                    f"Scheduled job {jobkey} with frontera settings {frontera_settings_json}"
-                )
+                logger.info(f"Scheduled job {jobkey} with frontera settings {frontera_settings_json}")
             return True
         return bool(running_jobs)
 

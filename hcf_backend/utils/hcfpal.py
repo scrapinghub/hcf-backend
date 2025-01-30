@@ -147,7 +147,10 @@ class HCFPalScript(BaseScript):
         parser_dump.add_argument("frontier", help="Frontier name from where to dump")
         parser_dump.add_argument("slot", help="Slot from where to dump")
         parser_dump.add_argument(
-            "--num-requests", help="Number of requests to dump. Defaults to %(default)d.", type=int, default=100,
+            "--num-requests",
+            help="Number of requests to dump. Defaults to %(default)d.",
+            type=int,
+            default=100,
         )
 
         parser_move = subparsers.add_parser(
@@ -250,11 +253,15 @@ class HCFPalScript(BaseScript):
     def dump_slot(self):
         print(
             "Dumping next {} requests from slot {}, frontier {}, pid {}:".format(
-                self.args.num_requests, self.args.slot, self.args.frontier, self.project_id,
+                self.args.num_requests,
+                self.args.slot,
+                self.args.frontier,
+                self.project_id,
             )
         )
         for batch_id, reqs in groupby(
-            self.hcf.dump_slot(self.args.frontier, self.args.slot, self.args.num_requests), key=itemgetter(0),
+            self.hcf.dump_slot(self.args.frontier, self.args.slot, self.args.num_requests),
+            key=itemgetter(0),
         ):
             print("Batch id:", batch_id)
             for _, req in reqs:
@@ -263,7 +270,11 @@ class HCFPalScript(BaseScript):
     def move_slots(self):
         print(
             "Moving requests from frontier {}, pid {}, prefix {} into {} slots of prefix {}".format(
-                self.args.frontier, self.project_id, self.args.prefix, self.args.dest_num_slots, self.args.dest_prefix,
+                self.args.frontier,
+                self.project_id,
+                self.args.prefix,
+                self.args.dest_num_slots,
+                self.args.dest_prefix,
             )
         )
         if self.args.num_slots:
@@ -299,7 +310,11 @@ class HCFPalScript(BaseScript):
     def move_batch(self):
         print(
             "Moving requests from frontier {}, pid {}, slot {}, batch {} to slot {}".format(
-                self.args.frontier, self.project_id, self.args.source_slot, self.args.batchid, self.args.dest_slot,
+                self.args.frontier,
+                self.project_id,
+                self.args.source_slot,
+                self.args.batchid,
+                self.args.dest_slot,
             )
         )
         for batch in self.hsp.frontier.read(self.args.frontier, self.args.source_slot, self.args.max_scan_batches):

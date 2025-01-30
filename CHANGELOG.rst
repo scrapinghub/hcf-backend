@@ -2,7 +2,7 @@
 hcf-backend changelog
 =====================
 
-x.y.z (unreleased)
+0.6.0 (unreleased)
 ==================
 
 -   Drop Python 3.6-3.8 support, add Python 3.9+ support.

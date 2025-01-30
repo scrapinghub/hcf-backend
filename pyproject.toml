@@ -14,11 +14,6 @@ replace = "({now:%Y-%m-%d})"
 regex = true
 
 [[tool.bumpversion.files]]
-filename = 'CHANGELOG.rst'
-search = "x.y.z"
-replace = "{new_version}"
-
-[[tool.bumpversion.files]]
 filename = "hcf_backend/__init__.py"
 
 [[tool.bumpversion.files]]

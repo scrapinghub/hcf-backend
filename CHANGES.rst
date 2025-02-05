@@ -7,6 +7,11 @@ hcf-backend changelog
 
 -   Drop Python 3.6-3.8 support, add Python 3.9+ support.
 
+-   | Update dependencies:
+    | ``frontera``: ``==0.7.1`` → ``>=0.7.2,<8``
+    | ``humanize``: ``==0.5.1`` → ``>=0.5.1``
+    | ``scrapinghub``: ``>=2.0.0`` → ``>=2.3.1``
+
 
 Earlier releases
 ================

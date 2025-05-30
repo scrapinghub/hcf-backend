@@ -8,7 +8,7 @@ from scrapinghub.client import parse_auth
 def convert_from_bytes(data):
     if data is not None:
         data_type = type(data)
-        if data_type == bytes:
+        if data_type is bytes:
             try:
                 return data.decode("utf8")
             except UnicodeDecodeError:
@@ -24,11 +24,11 @@ def convert_from_bytes(data):
 def convert_to_bytes(data):
     if data is not None:
         data_type = type(data)
-        if data_type == str:
+        if data_type is str:
             return data.encode("utf8")
         if data_type in (bytes, int, float, bool):
             return data
-        if data_type == dict:
+        if data_type is dict:
             data = data.items()
         return data_type(map(convert_to_bytes, data))
 

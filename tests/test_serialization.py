@@ -50,7 +50,9 @@ class MockConsumer:
     def read(self, slot: str, mincount: int | None = None):
         yield {
             "id": int("00013967d8af7b0001", 16),
-            "requests": [[request["fp"], request.get("qdata", None)] for request in self.storage],
+            "requests": [
+                [request["fp"], request.get("qdata", None)] for request in self.storage
+            ],
         }
 
     def delete(self, slot: str, batch_ids: list[int]):
@@ -60,8 +62,18 @@ class MockConsumer:
 @pytest.mark.parametrize(
     "request_",
     [
-        Request(url="url", meta={b"frontier_fingerprint": b'\xcf&\xac\x1a\xd2\xabb\xff5\xccFw?\xa1\xac\xea\\\xdb\xca\x96'}),  # e.g. Scrapy >= 2.7
-        Request(url="url", meta={b"frontier_fingerprint": 'cf26ac1ad2ab62ff35cc46773fa1acea5cdbca96'}),  # e.g. Scrapy < 2.7
+        # e.g. Scrapy >= 2.7
+        Request(
+            url="url",
+            meta={
+                b"frontier_fingerprint": b"\xcf&\xac\x1a\xd2\xabb\xff5\xccFw?\xa1\xac\xea\\\xdb\xca\x96"
+            },
+        ),
+        # e.g. Scrapy < 2.7
+        Request(
+            url="url",
+            meta={b"frontier_fingerprint": "cf26ac1ad2ab62ff35cc46773fa1acea5cdbca96"},
+        ),
     ],
 )
 def test_add_seeds(request_):

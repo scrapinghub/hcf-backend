@@ -5,7 +5,7 @@ hcf-backend changelog
 0.6.0 (unreleased)
 ==================
 
--   Dropped Python 3.6-3.8 support, add Python 3.9+ support.
+-   Dropped Python 3.6-3.8 support, added Python 3.9+ support.
 
 -   | Updated dependencies:
     | ``frontera``: ``==0.7.1`` → ``>=0.7.2,<8``

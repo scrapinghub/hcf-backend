@@ -5,12 +5,18 @@ hcf-backend changelog
 0.6.0 (unreleased)
 ==================
 
--   Drop Python 3.6-3.8 support, add Python 3.9+ support.
+-   Dropped Python 3.6-3.8 support, add Python 3.9+ support.
 
--   | Update dependencies:
+-   | Updated dependencies:
     | ``frontera``: ``==0.7.1`` → ``>=0.7.2,<8``
     | ``humanize``: ``==0.5.1`` → ``>=0.5.1``
     | ``scrapinghub``: ``>=2.0.0`` → ``>=2.3.1``
+
+-   Added support for binary fingerprints.
+
+    This makes it possible to work with Scrapy 2.7+ through scrapy-frontera.
+
+-   ``HCFBackend.hcf_get_producer_slot()`` must now accept an ``fp`` parameter.
 
 
 Earlier releases

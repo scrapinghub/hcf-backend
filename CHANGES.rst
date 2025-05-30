@@ -12,11 +12,8 @@ hcf-backend changelog
     | ``humanize``: ``==0.5.1`` → ``>=0.5.1``
     | ``scrapinghub``: ``>=2.0.0`` → ``>=2.3.1``
 
--   Added support for binary fingerprints.
-
-    This makes it possible to work with Scrapy 2.7+ through scrapy-frontera.
-
--   ``HCFBackend.hcf_get_producer_slot()`` must now accept an ``fp`` parameter.
+-   A non-str request fingerprint will now raise a more descriptive
+    :exc:`ValueError` exception.
 
 
 Earlier releases

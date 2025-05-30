@@ -62,14 +62,6 @@ class MockConsumer:
 @pytest.mark.parametrize(
     "request_",
     [
-        # e.g. Scrapy >= 2.7
-        Request(
-            url="url",
-            meta={
-                b"frontier_fingerprint": b"\xcf&\xac\x1a\xd2\xabb\xff5\xccFw?\xa1\xac\xea\\\xdb\xca\x96"
-            },
-        ),
-        # e.g. Scrapy < 2.7
         Request(
             url="url",
             meta={b"frontier_fingerprint": "cf26ac1ad2ab62ff35cc46773fa1acea5cdbca96"},
@@ -94,3 +86,24 @@ def test_add_seeds(request_):
         request.meta.pop(b"created_at")
         request.meta.pop(b"depth")
     assert [original_request] == processed_requests
+
+
+def test_add_seeds_binary_fingerprint():
+    environ["PROJECT_ID"] = "-1"
+    environ["SH_APIKEY"] = "foo"
+    backend = HCFBackend(manager=MockManager())
+    backend.frontier_start()
+    storage = []
+    backend.producer = MockProducer(storage)
+    backend.consumer = MockConsumer(storage)
+
+    request = Request(
+        url="url",
+        meta={
+            b"frontier_fingerprint": b"\xcf&\xac\x1a\xd2\xabb\xff5\xccFw?\xa1\xac\xea\\\xdb\xca\x96"
+        },
+    )
+    seeds = [request]
+
+    with pytest.raises(ValueError, match=r"must be a string"):
+        backend.add_seeds(seeds)

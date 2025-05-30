@@ -269,11 +269,6 @@ class HCFBackend(Backend):
                 )
                 for fingerprint, qdata in requests:
                     self._convert_qdata_to_bytes(qdata)
-                    if (
-                        qdata["request"]["meta"].pop(b"_hcf_backend_fp_type", None)
-                        == "bytes"
-                    ):
-                        fingerprint = bytes.fromhex(fingerprint)
                     request = self._make_request(fingerprint, qdata)
                     if request is not None:
                         request.meta.update({b"created_at": _now(), b"depth": 0})
@@ -332,11 +327,12 @@ class HCFBackend(Backend):
         if not self.producer:
             LOG.debug(f"Ignoring {link.url}: backend not configured as producer")
             return
+        fp = link.meta[b"frontier_fingerprint"]
+        if not isinstance(fp, str):
+            raise ValueError(
+                f'The value of the b"frontier_fingerprint" meta key must be a string, got {fp!r} in {link}.'
+            )
         link.meta.pop(b"origin_is_frontier", None)
-        fp = link.meta.pop(b"frontier_fingerprint")
-        if isinstance(fp, bytes):
-            fp = fp.hex()
-            link.meta[b"_hcf_backend_fp_type"] = "bytes"
         hcf_request = {"fp": fp}
         qdata = {"request": {}}
         for attr in ("method", "headers", "cookies", "meta"):
@@ -344,7 +340,7 @@ class HCFBackend(Backend):
         qdata["url"] = link.url
         hcf_request["qdata"] = qdata
 
-        slot = self.hcf_get_producer_slot(link, fp)
+        slot = self.hcf_get_producer_slot(link)
         if slot:
             self.producer.add_request(slot, convert_from_bytes(hcf_request))
 
@@ -377,19 +373,20 @@ class HCFBackend(Backend):
                 auth=self.hcf_auth,
             )
 
-    def hcf_get_producer_slot(self, request, fp):
+    def hcf_get_producer_slot(self, request):
         """Determine to which slot should be saved the request.
 
         Depending on the urls, this distribution might or not be evenly among
         the slots.
         """
+        fingerprint = request.meta[b"frontier_fingerprint"]
         slot_prefix = request.meta.get(
             b"frontier_slot_prefix", self.hcf_producer_slot_prefix
         )
         num_slots = request.meta.get(
             b"frontier_number_of_slots", self.hcf_producer_number_of_slots
         )
-        slotno = assign_slotno(fp, num_slots)
+        slotno = assign_slotno(fingerprint, num_slots)
         slot = slot_prefix + str(slotno)
         return slot
 

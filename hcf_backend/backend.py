@@ -71,7 +71,7 @@ If is consumer:
 
 """
 
-import datetime
+import datetime as dt
 import logging
 
 from frontera import Backend
@@ -96,6 +96,13 @@ DEFAULT_HCF_PRODUCER_BATCH_SIZE = 1000
 DEFAULT_HCF_CONSUMER_SLOT = "0"
 DEFAULT_HCF_CONSUMER_MAX_BATCHES = 0
 DEFAULT_HCF_CONSUMER_MAX_REQUESTS = 0
+
+
+def _now():
+    try:
+        return dt.datetime.now(dt.UTC)
+    except AttributeError:  # Python < 3.11
+        return dt.datetime.utcnow()
 
 
 class HCFBackend(Backend):
@@ -249,9 +256,11 @@ class HCFBackend(Backend):
                 self.stats.inc_value(self._get_consumer_stats_msg("requests"), len(requests))
                 for fingerprint, qdata in requests:
                     self._convert_qdata_to_bytes(qdata)
+                    if qdata["request"]["meta"].pop(b"_hcf_backend_fp_type", None) == "bytes":
+                        fingerprint = bytes.fromhex(fingerprint)
                     request = self._make_request(fingerprint, qdata)
                     if request is not None:
-                        request.meta.update({b"created_at": datetime.datetime.utcnow(), b"depth": 0})
+                        request.meta.update({b"created_at": _now(), b"depth": 0})
                         return_requests.append(request)
                         self.n_consumed_requests += 1
                 self.consumed_batches_ids.append(batch_id)
@@ -296,14 +305,18 @@ class HCFBackend(Backend):
             LOG.debug(f"Ignoring {link.url}: backend not configured as producer")
             return
         link.meta.pop(b"origin_is_frontier", None)
-        hcf_request = {"fp": link.meta[b"frontier_fingerprint"]}
+        fp = link.meta.pop(b"frontier_fingerprint")
+        if isinstance(fp, bytes):
+            fp = fp.hex()
+            link.meta[b"_hcf_backend_fp_type"] = "bytes"
+        hcf_request = {"fp": fp}
         qdata = {"request": {}}
         for attr in ("method", "headers", "cookies", "meta"):
             qdata["request"][attr] = getattr(link, attr)
         qdata["url"] = link.url
         hcf_request["qdata"] = qdata
 
-        slot = self.hcf_get_producer_slot(link)
+        slot = self.hcf_get_producer_slot(link, fp)
         if slot:
             self.producer.add_request(slot, convert_from_bytes(hcf_request))
 
@@ -335,16 +348,15 @@ class HCFBackend(Backend):
                 frontier=self.hcf_consumer_frontier, project_id=self.hcf_project_id, auth=self.hcf_auth
             )
 
-    def hcf_get_producer_slot(self, request):
+    def hcf_get_producer_slot(self, request, fp):
         """Determine to which slot should be saved the request.
 
         Depending on the urls, this distribution might or not be evenly among
         the slots.
         """
-        fingerprint = request.meta[b"frontier_fingerprint"]
         slot_prefix = request.meta.get(b"frontier_slot_prefix", self.hcf_producer_slot_prefix)
         num_slots = request.meta.get(b"frontier_number_of_slots", self.hcf_producer_number_of_slots)
-        slotno = assign_slotno(fingerprint, num_slots)
+        slotno = assign_slotno(fp, num_slots)
         slot = slot_prefix + str(slotno)
         return slot
 

@@ -20,3 +20,8 @@ filename = "hcf_backend/__init__.py"
 filename = "setup.py"
 search = "version=\"{current_version}"
 replace = "version=\"{new_version}"
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::DeprecationWarning:scrapinghub.hubstorage.serialization"
+]

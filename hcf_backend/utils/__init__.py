@@ -1,5 +1,4 @@
 import hashlib
-import six
 
 from collections.abc import Mapping
 
@@ -38,7 +37,7 @@ def hash_mod(text, divisor):
     """
     returns the module of dividing text md5 hash over given divisor
     """
-    if isinstance(text, six.text_type):
+    if isinstance(text, str):
         text = text.encode("utf8")
     md5 = hashlib.md5()
     md5.update(text)

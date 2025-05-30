@@ -10,7 +10,10 @@ def convert_from_bytes(data):
     if data is not None:
         data_type = type(data)
         if data_type == bytes:
-            return data.decode("utf8")
+            try:
+                return data.decode("utf8")
+            except UnicodeDecodeError:
+                return data
         if data_type in (str, int, float, bool):
             return data
         if isinstance(data, Mapping):

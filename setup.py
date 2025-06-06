@@ -13,7 +13,7 @@ setup(
     maintainer="Scrapinghub",
     packages=find_packages(),
     install_requires=(
-        "frontera>=0.7.2,<8",
+        "frontera>=0.7.2,<0.8",
         "humanize>=0.5.1",
         "requests>=2.18.4",
         "retrying>=1.3.3",

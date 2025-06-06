@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="hcf-backend",
-    version="0.5.2.5",
+    version="0.5.3",
     description="ScrapyCloud HubStorage frontier backend for Frontera",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
@@ -13,11 +13,11 @@ setup(
     maintainer="Scrapinghub",
     packages=find_packages(),
     install_requires=(
-        "frontera==0.7.1",
-        "humanize==0.5.1",
+        "frontera>=0.7.2,<0.8",
+        "humanize>=0.5.1",
         "requests>=2.18.4",
         "retrying>=1.3.3",
-        "scrapinghub>=2.0.0",
+        "scrapinghub>=2.3.1",
         "shub-workflow>=1.10.20",
     ),
     classifiers=[
@@ -25,8 +25,10 @@ setup(
         "Intended Audience :: Developers",
         "License :: OSI Approved :: BSD License",
         "Operating System :: OS Independent",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
     ],
 )

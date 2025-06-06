@@ -1,5 +1,4 @@
 import hashlib
-import six
 
 from collections.abc import Mapping
 
@@ -9,8 +8,8 @@ from scrapinghub.client import parse_auth
 def convert_from_bytes(data):
     if data is not None:
         data_type = type(data)
-        if data_type == bytes:
-            return data.decode('utf8')
+        if data_type is bytes:
+            return data.decode("utf8")
         if data_type in (str, int, float, bool):
             return data
         if isinstance(data, Mapping):
@@ -22,11 +21,11 @@ def convert_from_bytes(data):
 def convert_to_bytes(data):
     if data is not None:
         data_type = type(data)
-        if data_type == str:
-            return data.encode('utf8')
+        if data_type is str:
+            return data.encode("utf8")
         if data_type in (bytes, int, float, bool):
             return data
-        if data_type == dict:
+        if data_type is dict:
             data = data.items()
         return data_type(map(convert_to_bytes, data))
 
@@ -35,8 +34,8 @@ def hash_mod(text, divisor):
     """
     returns the module of dividing text md5 hash over given divisor
     """
-    if isinstance(text, six.text_type):
-        text = text.encode('utf8')
+    if isinstance(text, str):
+        text = text.encode("utf8")
     md5 = hashlib.md5()
     md5.update(text)
     digest = md5.hexdigest()

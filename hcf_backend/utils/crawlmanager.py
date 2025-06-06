@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 
 
 class HCFCrawlManager(CrawlManager):
-
     default_max_jobs = 1
 
     def __init__(self):
@@ -94,7 +93,9 @@ class HCFCrawlManager(CrawlManager):
                 )
                 jobkey = self.schedule_spider_with_jobargs(
                     job_args_override={
-                        "spider_args": {"frontera_settings_json": frontera_settings_json},
+                        "spider_args": {
+                            "frontera_settings_json": frontera_settings_json
+                        },
                     },
                     spider=self.args.spider,
                 )

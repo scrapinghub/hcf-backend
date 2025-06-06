@@ -2,7 +2,7 @@
 line-length = 120
 
 [tool.bumpversion]
-current_version = "0.5.3"
+current_version = "0.6.0"
 commit = true
 tag = true
 tag_name = "{new_version}"

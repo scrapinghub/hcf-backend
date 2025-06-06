@@ -2,7 +2,7 @@
 hcf-backend changelog
 =====================
 
-0.6.0 (unreleased)
+0.6.0 (2025-06-06)
 ==================
 
 -   Dropped Python 3.6-3.8 support, added Python 3.9+ support.

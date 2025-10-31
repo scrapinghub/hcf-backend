@@ -62,10 +62,11 @@ class HCFManager(object):
     def read(self, slot, mincount=None):
         slot_obj = self._frontier.get(slot)
         for i in range(self._hcf_retries):
+            log_method = LOG.error if i == self._hcf_retries - 1 else LOG.warning
             try:
                 return slot_obj.q.iter(mincount=mincount)
             except requests_lib.exceptions.ReadTimeout:
-                LOG.error(
+                log_method(
                     "Could not read from {0}/{1} try {2}/{3}".format(
                         self._frontier.key, slot, i + 1, self._hcf_retries
                     )
@@ -74,13 +75,13 @@ class HCFManager(object):
                 requests_lib.exceptions.ConnectionError,
                 scrapinghub.client.exceptions.ServerError,
             ):
-                LOG.error(
+                log_method(
                     "Connection error while reading from {0}/{1} try {2}/{3}".format(
                         self._frontier.key, slot, i + 1, self._hcf_retries
                     )
                 )
             except requests_lib.exceptions.RequestException:
-                LOG.error(
+                log_method(
                     "Error while reading from {0}/{1} try {2}/{3}".format(
                         self._frontier.key, slot, i + 1, self._hcf_retries
                     )
@@ -92,11 +93,12 @@ class HCFManager(object):
         slot_obj = self._frontier.get(slot)
 
         for i in range(self._hcf_retries):
+            log_method = LOG.error if i == self._hcf_retries - 1 else LOG.warning
             try:
                 slot_obj.q.delete(ids)
                 break
             except requests_lib.exceptions.ReadTimeout:
-                LOG.error(
+                log_method(
                     "Could not delete ids from {0}/{1} try {2}/{3}".format(
                         self._frontier.key, slot, i + 1, self._hcf_retries
                     )
@@ -105,13 +107,13 @@ class HCFManager(object):
                 requests_lib.exceptions.ConnectionError,
                 scrapinghub.client.exceptions.ServerError,
             ):
-                LOG.error(
+                log_method(
                     "Connection error while deleting ids from {0}/{1} try {2}/{3}".format(
                         self._frontier.key, slot, i + 1, self._hcf_retries
                     )
                 )
             except requests_lib.exceptions.RequestException:
-                LOG.error(
+                log_method(
                     "Error deleting ids from {0}/{1} try {2}/{3}".format(
                         self._frontier.key, slot, i + 1, self._hcf_retries
                     )

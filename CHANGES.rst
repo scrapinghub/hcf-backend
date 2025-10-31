@@ -2,6 +2,12 @@
 hcf-backend changelog
 =====================
 
+0.6.1 (2025-10-31)
+==================
+
+- fix: Lowered log level for retry messages from error to warning. Errors are now only logged for exhausted retries.
+- chore: Added configuration support for bump-my-version.
+
 0.6.0 (2025-06-06)
 ==================
 
